@@ -64,3 +64,82 @@
 - FMB 배포: https://github.com/JinyuanLiu-CV/SegMiF
 - DELIVER 데이터: https://huggingface.co/datasets/InSAI-Lab/DELIVER , 논문 https://arxiv.org/abs/2303.01480
 - SegFormer 구현과 가중치: Hugging Face `transformers`, `nvidia/mit-b0`
+
+---
+
+## Track A: Class 12 Oversampling Experiment
+
+### Objective
+
+Improve rare-class segmentation performance using
+RGB + infrared (IR) multimodal fusion.
+
+### Experimental Results
+
+| Experiment | Best Epoch | Validation mIoU |
+|---|---:|---:|
+| RGB Only | 29 | 61.53% |
+| RGB + IR Sum | 30 | 65.48% |
+| Sum + Class 12 Oversampling (10%) | 29 | 67.97% |
+
+The proposed oversampling strategy improved validation
+mIoU by **+2.49 percentage points** over RGB + IR Sum.
+
+### Method
+
+- Backbone: NVIDIA MiT-B0
+- Fusion: Sum
+- Parameters: 7.04M
+- Target class: 12
+- Sampling method: WeightedRandomSampler
+- Target positive-image sampling fraction: 10%
+- Training images: 1,000
+- Class 12 positive images: 10
+- Class 12 negative images: 990
+- Positive sampling weight: 11.0
+- Sampling with replacement
+
+Only training labels are used to construct sampling weights.
+Validation labels are used for evaluation only.
+
+### Training
+
+```bash
+python train_oversample.py \
+  --data_root data/FMB_prepared \
+  --fusion sum \
+  --backbone nvidia/mit-b0 \
+  --epochs 30 \
+  --seed 0 \
+  --target_fraction 0.10 \
+  --out runs/fmb_sum_oversample10
+```
+
+### Inference
+
+```bash
+python predict.py \
+  --data_root data/FMB_prepared \
+  --ckpt runs/fmb_sum_oversample10/best.pth \
+  --split test \
+  --out submission
+```
+
+### Rare-Class Results
+
+| Metric | RGB + IR Sum | Oversampling |
+|---|---:|---:|
+| Class 12 IoU | 0.00% | 43.40% |
+| Overall mIoU | 65.48% | 67.97% |
+
+Class 12 appears in only 2 of the 220 validation images.
+The rare-class improvement should therefore be interpreted
+with this limited validation coverage in mind.
+
+### Submission Verification
+
+- Test predictions: 280 PNG files
+- Class IDs: 0-13
+- ZIP integrity: PASS
+- Prediction filenames: PASS
+- Validation mIoU reproduced with updated instructor code

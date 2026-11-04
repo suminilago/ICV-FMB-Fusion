@@ -218,3 +218,11 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# FMB project local artifacts
+/data/
+/runs/
+/submissions/
+*.pth
+*.pt
+*.ckpt

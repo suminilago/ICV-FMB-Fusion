@@ -34,7 +34,8 @@ def _adapt_first_conv(encoder, in_ch):
     pe.proj = new
 
 
-def _load_encoder(backbone, pretrained):
+def _load_encoder(backbone, pretrained, config=None):
+    """MiT encoder. `config` (dict) rebuilds the exact architecture stored in a checkpoint."""
     if pretrained:
         m, info = SegformerModel.from_pretrained(backbone, output_loading_info=True)
         n_miss, n_all = len(info.get("missing_keys", [])), len(m.state_dict())
@@ -44,7 +45,12 @@ def _load_encoder(backbone, pretrained):
             raise RuntimeError("pretrained weights did not load (transformers version mismatch?). "
                                "Try: pip install 'transformers==4.46.3'  or ask the instructor.")
         return m
-    return SegformerModel(SegformerConfig())  # default config == MiT-B0 sizes
+    if config is not None:  # predict.py: architecture saved in the checkpoint
+        return SegformerModel(SegformerConfig.from_dict(config))
+    if backbone.rstrip("/").endswith("mit-b0"):  # default SegformerConfig == MiT-B0 sizes
+        return SegformerModel(SegformerConfig())
+    # --no_pretrained with another backbone: take its architecture from the hub config only
+    return SegformerModel(SegformerConfig.from_pretrained(backbone))
 
 
 def _run_stage(enc, i, x):
@@ -61,12 +67,14 @@ def _run_stage(enc, i, x):
 
 class FusionSegformer(nn.Module):
     def __init__(self, num_classes, aux_channels=1, fusion="sum",
-                 backbone="nvidia/mit-b0", pretrained=True):
+                 backbone="nvidia/mit-b0", pretrained=True, enc_config=None):
         super().__init__()
         self.fusion_name = fusion
         self.aux_channels = aux_channels
-        self.rgb_enc = _load_encoder(backbone, pretrained)
+        self.rgb_enc = _load_encoder(backbone, pretrained, enc_config)
         cfg = self.rgb_enc.config
+        # architecture of the encoder; store it in the checkpoint so predict.py rebuilds the same model
+        self.enc_config = enc_config if enc_config is not None else cfg.to_dict()
         self.aux_enc = None
         self.fuse = None
         if fusion == "early":
@@ -74,7 +82,7 @@ class FusionSegformer(nn.Module):
         elif fusion != "rgb":
             if fusion not in FUSIONS:
                 raise ValueError(f"unknown fusion '{fusion}', choose from {list(FUSIONS)}")
-            self.aux_enc = _load_encoder(backbone, pretrained)
+            self.aux_enc = _load_encoder(backbone, pretrained, enc_config)
             _adapt_first_conv(self.aux_enc, aux_channels)
             self.fuse = nn.ModuleList([FUSIONS[fusion](c) for c in cfg.hidden_sizes])
         cfg.num_labels = num_classes

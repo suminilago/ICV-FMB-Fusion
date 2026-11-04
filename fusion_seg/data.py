@@ -47,10 +47,7 @@ class SegDataset(Dataset):
         if aux.shape[0] == 4:
             aux = aux[:3]
         if it.get("label"):
-            lab = np.array(Image.open(os.path.join(self.root, it["label"])))
-            if lab.ndim == 3:
-                lab = lab[..., 0]
-            lab = lab.astype(np.int64)
+            lab = np.array(Image.open(os.path.join(self.root, it["label"]))).astype(np.int64)
             lab = lab - self.meta.get("label_shift", 0)
             bad = (lab < 0) | (lab >= self.meta["num_classes"])
             lab[bad] = self.meta["ignore"]
