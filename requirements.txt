@@ -1,0 +1,7 @@
+torch
+torchvision
+transformers
+huggingface_hub
+gdown
+numpy
+pillow
