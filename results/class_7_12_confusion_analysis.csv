@@ -1,0 +1,13 @@
+GT_Class,Model,Rank,Predicted_Class,Misclassified_Pixels,GT_Percentage
+7,RGB Only,1,5,75216,24.11
+7,RGB Only,2,8,38731,12.41
+7,RGB Only,3,2,23117,7.41
+7,RGB+IR Sum,1,8,32281,10.35
+7,RGB+IR Sum,2,5,27773,8.9
+7,RGB+IR Sum,3,2,16276,5.22
+12,RGB Only,1,8,432,43.46
+12,RGB Only,2,1,330,33.2
+12,RGB Only,3,6,173,17.4
+12,RGB+IR Sum,1,8,680,68.41
+12,RGB+IR Sum,2,6,166,16.7
+12,RGB+IR Sum,3,0,131,13.18
