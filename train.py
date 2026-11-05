@@ -111,7 +111,8 @@ def main():
             f.write(json.dumps(rec) + "\n")
         if miou > best:
             best = miou
-            torch.save({"model": model.state_dict(), "args": vars(a), "meta": meta}, os.path.join(a.out, "best.pth"))
+            torch.save({"model": model.state_dict(), "args": vars(a), "meta": meta, "enc_config": model.enc_config},
+                       os.path.join(a.out, "best.pth"))
         torch.save({"model": model.state_dict(), "opt": opt.state_dict(), "epoch": ep, "best": best}, last)
         if a.max_minutes and (time.time() - t0) / 60 > a.max_minutes:
             print("time budget reached; rerun the same command to resume")

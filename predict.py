@@ -27,7 +27,8 @@ def main():
     ck = torch.load(a.ckpt, map_location=dev)
     args, meta = ck["args"], ck["meta"]
     model = FusionSegformer(meta["num_classes"], meta["aux_channels"], args["fusion"],
-                            args["backbone"], pretrained=False).to(dev)
+                            args["backbone"], pretrained=False,
+                            enc_config=ck.get("enc_config")).to(dev)  # None for old B0 checkpoints
     model.load_state_dict(ck["model"]); model.eval()
     ds = SegDataset(a.data_root, a.split, (args["height"], args["width"]), train=False)
     dl = DataLoader(ds, 4, shuffle=False, num_workers=2)
@@ -35,12 +36,15 @@ def main():
     with torch.no_grad():
         for b in dl:
             rgb, aux = b["rgb"].to(dev), b["aux"].to(dev)
-            lg = model(rgb, aux).float().softmax(1)
-            if a.flip:
-                lg = lg + model(rgb.flip(-1), aux.flip(-1)).float().softmax(1).flip(-1)
+            lg = model(rgb, aux).float()                      # logits at 1/4 resolution
+            lgf = model(rgb.flip(-1), aux.flip(-1)).float().flip(-1) if a.flip else None
             for i, name in enumerate(b["name"]):
                 h, w = [int(v) for v in b["orig"][i]]
-                pred = upsample_logits(lg[i:i + 1], (h, w)).argmax(1)[0].cpu().numpy().astype(np.uint8)
+                # same order as train.py evaluate(): logits -> resize -> argmax (softmax only for TTA averaging)
+                p = upsample_logits(lg[i:i + 1], (h, w))
+                if lgf is not None:
+                    p = p.softmax(1) + upsample_logits(lgf[i:i + 1], (h, w)).softmax(1)
+                pred = p.argmax(1)[0].cpu().numpy().astype(np.uint8)
                 Image.fromarray(pred).save(os.path.join(a.out, name))
     zpath = a.out.rstrip("/") + ".zip"
     with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED) as z:

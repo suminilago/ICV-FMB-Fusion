@@ -12,7 +12,6 @@ split rule (fixed seed => identical for every student):
   official train 1,220 -> shuffle(seed 2026) -> train 1,000 / val rest
   official test  280   -> leaderboard test (use for final prediction only!)
 
-Instructor-only: --export_ref DIR writes test labels (mapped to class ids) for the scorer.
 """
 import argparse
 import json
@@ -54,7 +53,6 @@ def main():
     p.add_argument("--num_classes", type=int, default=14)
     p.add_argument("--ignore", type=int, default=255)
     p.add_argument("--label_shift", type=int, default=1, help="class id = pixel value - label_shift (FMB: 0=unlabeled, 1..14 -> 0..13)")
-    p.add_argument("--export_ref", default=None, help="(instructor) dir for hidden test labels")
     a = p.parse_args()
 
     found = defaultdict(dict)  # (split, stem) -> {kind: relpath}
@@ -100,14 +98,6 @@ def main():
         hist.update(dict(zip(vals.tolist(), cnt.tolist())))
     print("label values (60 train images):", sorted(hist.items()))
     print("meta:", meta, "-> FMB: 0=unlabeled, 1..14 = classes (label_shift 1 is the default); if your values differ, change --label_shift")
-    if a.export_ref:
-        os.makedirs(a.export_ref, exist_ok=True)
-        for stem, v in triples["test"]:
-            lab = np.array(Image.open(os.path.join(a.raw, v["label"]))).astype(np.int64) - a.label_shift
-            lab[(lab < 0) | (lab >= a.num_classes)] = a.ignore
-            Image.fromarray(lab.astype(np.uint8)).save(os.path.join(a.export_ref, stem + ".png"))
-        json.dump({"num_classes": a.num_classes, "ignore": a.ignore}, open(os.path.join(a.export_ref, "meta.json"), "w"))
-        print("hidden-test reference written:", a.export_ref)
 
 
 if __name__ == "__main__":
