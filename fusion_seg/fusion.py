@@ -27,4 +27,32 @@ class SumFusion(nn.Module):
 # class SEGateFusion(nn.Module):      # squeeze-excitation weights per modality
 
 
-FUSIONS = {"sum": SumFusion}
+class ConcatConvFusion(nn.Module):
+    def __init__(self, channels):
+        super().__init__()
+        self.proj = nn.Conv2d(2 * channels, channels, kernel_size=1)
+
+    def forward(self, x, a):
+        return self.proj(torch.cat([x, a], dim=1))
+
+
+class AdaptiveFusion(nn.Module):
+    def __init__(self, channels):
+        super().__init__()
+        self.gate = nn.Linear(2 * channels, channels)
+        nn.init.zeros_(self.gate.weight)
+        nn.init.zeros_(self.gate.bias)
+
+    def forward(self, x, a):
+        rgb_summary = x.mean(dim=(2, 3))
+        ir_summary = a.mean(dim=(2, 3))
+        summary = torch.cat([rgb_summary, ir_summary], dim=1)
+        weight = torch.sigmoid(self.gate(summary))[:, :, None, None]
+        return 2.0 * (weight * x + (1.0 - weight) * a)
+
+
+FUSIONS = {
+    "sum": SumFusion,
+    "concat": ConcatConvFusion,
+    "adaptive": AdaptiveFusion,
+}
