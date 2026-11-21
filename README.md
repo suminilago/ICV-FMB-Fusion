@@ -1,3 +1,47 @@
+# ICV 기말 프로젝트 트랙 A: FMB RGB·IR 융합 세그멘테이션 (팀 작업)
+
+**최종 모델**: SegFormer, RGB·IR 인코더 모두 MiT-B2, Stage별 Sum 융합, 입력 480×640, 51.55M
+→ **val mIoU 73.65 / test mIoU 66.13** (Codabench 제출 1061666, 팀 계정 `reduce_l`). 교수 베이스라인은 test 52.77 (RGB) / 56.30 (Sum)이다.
+
+RGB 단독 대비 IR 기여는 B0(384×512)에서 val +3.95, 최종 설정(B2, 480×640)에서 +2.66이고 어두운 장면에서 +4.64로 가장 크다.
+
+## 프로젝트 흐름
+
+베이스라인과 데이터를 먼저 관찰하고, 그 관찰을 근거로 가설을 세워 한 번에 한 요소만 바꿔 실험했다.
+결과 분석이 다음 가설의 근거가 되는 이 과정을 다섯 번 돌았고, 실험 11개 중 4개를 리더보드에 제출했다.
+
+| 사이클 | 확인한 가설 | 판정 | 결과로 정해진 것 |
+|---|---|---|---|
+| [1. 기준선과 희귀 클래스](results/01_baseline/README.md) | IR은 RGB를 보완한다 / Bicycle은 노출을 늘리면 학습된다 | 지지 / 지지 | 클래스별 IR 기여 편차가 사이클 2의 근거, B0 oversampling의 test 미검증이 사이클 5의 근거 |
+| [2. 융합 구조와 초기화](results/02_fusion/README.md) | 학습형 융합이 Sum보다 낫다 / Concat이 낮은 원인은 초기화다 / 입력 단계 융합으로 충분하다 | **기각** / 지지 / **기각** | 융합은 Sum으로 고정, IR 전용 인코더를 둔 두 인코더 구조 유지 |
+| [3. 백본 확대와 해상도](results/03_capacity/README.md) | 병목은 모델 용량이다 / 입력 축소가 작은 물체를 지운다 | 지지 / 지지 | B2, 480×640, Sum을 최종 모델(#9)로 확정 |
+| [4. 최종 설정에서 IR 기여](results/04_ir_contribution/README.md) | 최종 설정에서도 IR이 기여하고 어두울수록 크다 | 지지 | 최종 모델 구조 유지 |
+| [5. 최종 설정 샘플링](results/05_oversampling_final/README.md) | oversampling이 최종 설정에서 val과 test를 함께 올린다 | **기각** | val +0.81, test −0.49로 갈려 #9 유지 |
+
+기각이 세 건이고, 각각 최종 모델의 구성을 정했다. 가설마다 근거와 검증 지표는 설계 문서에 있다.
+
+## 읽는 순서
+
+1. [docs/experiment_design.md](docs/experiment_design.md): 설계와 가설 검증. 가설의 근거, 검증 지표, 판정, 제출 선택, 측정 한계
+2. [results/report.md](results/report.md): 최종 보고서. 11개 실험 표, 주요 분석, 리더보드, 재현 방법
+3. [results/README.md](results/README.md): 결과 폴더 지도와 파일 이름 규칙
+4. [results/design_notes.md](results/design_notes.md): 학습 로그에서만 얻은 검증 분석 (수렴, 초반 격차, 클래스 교차 패턴)
+
+## 폴더 구성
+
+| 경로 | 내용 |
+|---|---|
+| `docs/` | 실험 설계와 가설 검증 |
+| `results/` | 사이클별 결과 표와 그림 (`00_overview` ~ `06_final_model`) |
+| `fusion_seg/` | 모델 코드. `fusion.py`가 팀 추가분(Concat, Adaptive, Concat_res) |
+| `tools/` | 데이터 준비(제공)와 `analyze_runs.py`(로그에서 표·그림 재생성) |
+| `runs/` | 실험별 `args.json`, `log.jsonl` (체크포인트는 팀 Google Drive) |
+| `notebooks/` | Colab 실행 노트북 |
+
+---
+
+아래는 교수 제공 과제 안내문이다.
+
 # 트랙 A: FMB 악천후 RGB–열화상(IR) 융합 세그멘테이션
 
 | 항목 | 내용 |
@@ -54,82 +98,3 @@
 ## 출처
 - FMB: https://github.com/JinyuanLiu-CV/SegMiF
 - SegFormer: Hugging Face `transformers`, `nvidia/mit-b0`
-
----
-
-## Track A: Class 12 Oversampling Experiment
-
-### Objective
-
-Improve rare-class segmentation performance using
-RGB + infrared (IR) multimodal fusion.
-
-### Experimental Results
-
-| Experiment | Best Epoch | Validation mIoU |
-|---|---:|---:|
-| RGB Only | 29 | 61.53% |
-| RGB + IR Sum | 30 | 65.48% |
-| Sum + Class 12 Oversampling (10%) | 29 | 67.97% |
-
-The proposed oversampling strategy improved validation
-mIoU by **+2.49 percentage points** over RGB + IR Sum.
-
-### Method
-
-- Backbone: NVIDIA MiT-B0
-- Fusion: Sum
-- Parameters: 7.04M
-- Target class: 12
-- Sampling method: WeightedRandomSampler
-- Target positive-image sampling fraction: 10%
-- Training images: 1,000
-- Class 12 positive images: 10
-- Class 12 negative images: 990
-- Positive sampling weight: 11.0
-- Sampling with replacement
-
-Only training labels are used to construct sampling weights.
-Validation labels are used for evaluation only.
-
-### Training
-
-```bash
-python train_oversample.py \
-  --data_root data/FMB_prepared \
-  --fusion sum \
-  --backbone nvidia/mit-b0 \
-  --epochs 30 \
-  --seed 0 \
-  --target_fraction 0.10 \
-  --out runs/fmb_sum_oversample10
-```
-
-### Inference
-
-```bash
-python predict.py \
-  --data_root data/FMB_prepared \
-  --ckpt runs/fmb_sum_oversample10/best.pth \
-  --split test \
-  --out submission
-```
-
-### Rare-Class Results
-
-| Metric | RGB + IR Sum | Oversampling |
-|---|---:|---:|
-| Class 12 IoU | 0.00% | 43.40% |
-| Overall mIoU | 65.48% | 67.97% |
-
-Class 12 appears in only 2 of the 220 validation images.
-The rare-class improvement should therefore be interpreted
-with this limited validation coverage in mind.
-
-### Submission Verification
-
-- Test predictions: 280 PNG files
-- Class IDs: 0-13
-- ZIP integrity: PASS
-- Prediction filenames: PASS
-- Validation mIoU reproduced with updated instructor code
