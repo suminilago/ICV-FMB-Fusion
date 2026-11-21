@@ -1,99 +1,40 @@
-# FMB Validation Analysis
+# 분석 결과 (트랙 A, FMB)
 
-## 1. Overview
+최종 분석 파일 모음이다. 모든 수치는 val 220장 기준이며 test 라벨은 사용하지 않았다.
+"B2 480"은 MiT-B2, 입력 480×640을 뜻한다(최종 모델: RGB + IR Sum). 클래스 IoU 단위는 %.
 
-This directory contains validation-set analyses for the
-RGB-only and RGB+IR Sum Fusion baselines.
+## 1. 전체 실험
 
-All analyses use the fixed FMB training/validation split:
-- Train: 1,000 images
-- Validation: 220 images
-- Classes: 14
-- Ignore label: 255
-
-## 2. Overall Results
-
-| Model | Validation mIoU |
-|---|---:|
-| RGB Only | 61.53% |
-| RGB+IR Sum | 65.48% |
-| Sum + Class 12 Oversampling (10%) | 67.97% |
-
-Sum Fusion improved mIoU by 3.95 percentage points
-over RGB Only.
-
-Oversampling improved mIoU by a further 2.49 percentage
-points over Sum Fusion.
-
-## 3. Class-wise IoU Analysis
-
-Source: `class_iou_comparison.csv`
-
-The RGB vs Sum comparison shows:
-- 12 classes improved.
-- Class 7 had the largest improvement (+19.26 pp).
-- Class 12 remained at 0% IoU.
-- Class 4 decreased by 0.39 pp.
-
-These results indicate that multimodal fusion improves
-overall segmentation performance but does not improve
-every class.
-
-## 4. Rare-Class Distribution
-
-Source: `train_class_distribution.csv`
-
-Class 12 is severely underrepresented:
-- Present in 10 of 1,000 training images.
-- Training pixel ratio: 0.00173%.
-- Present in 2 of 220 validation images.
-- Total Class 12 validation pixels: 994.
-
-This motivates investigating class-aware oversampling.
-
-## 5. Confusion Analysis
-
-Source: `class_7_12_confusion_analysis.csv`
-
-For ground-truth Class 12:
-- RGB Only predicts Class 8 for 43.46% of its pixels.
-- Sum Fusion predicts Class 8 for 68.41% of its pixels.
-- Both models achieve 0% Class 12 IoU.
-
-The results suggest that improved overall fusion performance
-does not necessarily translate into rare-class recognition.
-
-## 6. Oversampling Experiment
-
-The 10% Class 12 oversampling experiment achieved:
-- Validation mIoU: 67.97%.
-- Class 12 IoU: 43.40%.
-
-The improvement is promising, but Class 12 appears in only
-two validation images. Generalization beyond these examples
-is not established.
-
-A full class-wise Sum vs Oversampling comparison remains
-pending and will be added after evaluation.
-
-## 7. Analysis Files
-
-| File | Description |
+| 파일 | 내용 |
 |---|---|
-| class_iou_comparison.csv | RGB vs Sum per-class IoU |
-| class_iou_improvement.png | Per-class IoU visualization |
-| confusion_matrix_comparison.png | RGB vs Sum confusion matrices |
-| class_7_12_confusion_analysis.csv | Main errors for Classes 7 and 12 |
-| train_class_distribution.csv | Training-set class distribution |
-| class_12_val_images.csv | Validation images containing Class 12 |
-| class_12_gt_visualization.png | Class 12 ground-truth visualization |
-| class_12_prediction_comparison.png | Class 12 prediction comparison |
+| `run_summary.csv` | 10개 실험의 융합 방식, 백본, 입력 크기, epoch, seed, best val mIoU, best epoch(1부터), 기록된 epoch 수 |
+| `learning_curves.png` | epoch별 val mIoU 곡선. 왼쪽: B0 실험(384×512), 오른쪽: B2 실험 |
 
-## 8. Limitations and Next Steps
+## 2. IR 기여 (B2 480: RGB 단독 vs RGB + IR Sum)
 
-- Evaluate per-class IoU for Sum vs Oversampling.
-- Analyze improvements and regressions in other classes.
-- Inspect qualitative failure cases.
-- Consider sampling-ratio ablations if compute is available.
+| 파일 | 내용 |
+|---|---|
+| `class_iou_rgb_vs_sum_480.csv` | RGB 단독과 Sum의 클래스별 IoU, 클래스별 IR 기여 (Person +18.79로 최대) |
+| `miou_by_brightness.csv` | val을 RGB 평균 밝기로 3등분한 그룹별 mIoU (RGB 단독 / Sum / Sum + flip)와 IR 기여 (어두움 +4.64, 중간 +2.80, 밝음 +0.89) |
+| `class_iou_dark_rgb_vs_sum.csv` | 어두운 그룹만의 클래스별 IoU, RGB 단독 vs Sum (Person 42.32 → 65.82). Bicycle은 이 그룹에 없어서 NaN |
+| `ir_gain_class_brightness.png` | 왼쪽: 클래스별 IR 기여. 오른쪽: 밝기 그룹별 mIoU, RGB 단독 vs RGB + IR |
+| `dark_rgb_vs_sum.png` | IR 효과가 가장 컸던 어두운 val 장면 3장: RGB, IR, 정답, RGB 단독 예측, RGB + IR 예측 |
 
-No test labels were used for this validation analysis.
+## 3. 최종 모델 (B2 Sum 480)
+
+| 파일 | 내용 |
+|---|---|
+| `final_class_iou_b2_480.csv` | 최종 모델의 클래스별 IoU와 B2 Sum 384×512 대비 차이 (`480_minus_384`) |
+| `final_top_confusions_b2_480.csv` | IoU가 가장 낮은 6개 클래스와, 각 클래스가 가장 많이 잘못 예측된 클래스 3개 |
+| `final_confusion_matrix_b2_480.png` | 행 정규화 혼동행렬 (각 정답 클래스 픽셀 중 예측 비율 %) |
+| `final_failure_cases_b2_480.csv` | 픽셀 정확도가 가장 낮은 val 4장과 각 이미지의 주된 오류 (예: Sidewalk → Road) |
+| `final_failure_cases_b2_480.png` | 같은 4장의 RGB, IR, 정답, 예측 |
+
+## 4. 기타
+
+| 파일 | 내용 |
+|---|---|
+| `b2_class_iou.csv` | B0 RGB / Sum / Concat / Adaptive와 B2 Sum 384×512의 클래스별 IoU, B2 − B0 Sum 차이 |
+| `val_overall_tta.csv` | B2 RGB 480, B2 Sum 480, B2 Sum 480 + flip TTA의 val mIoU (73.65 → 73.63, TTA 미사용) |
+
+클래스 번호는 FMB 순서를 따른다: 0 Road, 1 Sidewalk, 2 Building, 3 TrafficLight, 4 TrafficSign, 5 Vegetation, 6 Sky, 7 Person, 8 Car, 9 Truck, 10 Bus, 11 Motorcycle, 12 Bicycle, 13 Pole.
