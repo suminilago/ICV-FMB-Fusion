@@ -28,13 +28,13 @@ Only the backbone differs from the B0 Sum baseline.
 | Model | Params | Best Epoch | Val mIoU (%) | Test mIoU (%) |
 |---|---:|---:|---:|---:|
 | Sum, MiT-B0 | 7.04M | 30 | 65.48 | — |
-| Adaptive, MiT-B0 | 7.23M | 28 | 65.35 | 55.84 |
-| **Sum, MiT-B2** | **51.55M** | **28** | **72.74** | **63.90** |
+| Adaptive, MiT-B0 | 7.23M | 29 | 65.35 | 55.84 |
+| **Sum, MiT-B2** | **51.55M** | **29** | **72.74** | **63.90** |
 
 - Val mIoU: +7.26 pp over Sum (MiT-B0).
 - Test mIoU (Codabench, submission 1060429): +8.06 pp over Adaptive (MiT-B0),
   +7.60 pp over the instructor Sum baseline (56.30).
-- Best epoch is reported 1-indexed (log.jsonl epoch 27 → 28).
+- Best epoch is reported 1-indexed (log.jsonl epoch 28 → 29).
 - No TTA was used for this submission.
 
 ## 4. Analysis
