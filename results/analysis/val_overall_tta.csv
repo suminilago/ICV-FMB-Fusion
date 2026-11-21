@@ -1,0 +1,4 @@
+모델,val mIoU
+B2 RGB 480,70.99
+B2 Sum 480,73.65
+B2 Sum 480 +flip,73.63

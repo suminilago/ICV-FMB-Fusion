@@ -1,0 +1,18 @@
+{
+ "data_root": "data/FMB_prepared",
+ "out": "/content/drive/MyDrive/ICV_FMB/runs/fmb_b2_sum",
+ "fusion": "sum",
+ "backbone": "nvidia/mit-b2",
+ "no_pretrained": false,
+ "epochs": 30,
+ "bs": 8,
+ "lr": 6e-05,
+ "wd": 0.01,
+ "warmup": 2,
+ "height": 384,
+ "width": 512,
+ "workers": 2,
+ "seed": 0,
+ "max_minutes": 0,
+ "no_amp": false
+}
