@@ -5,311 +5,497 @@
 - Full results: [results/report.md](../results/report.md)
 - Workflow: 제공 베이스라인 재현 → 결과 분석 → 후속 실험 설계
 - Control: 한 번에 한 요소만 변경
-- Format: Evidence → Hypothesis → Motivation → Setup → Criterion → Result → Interpretation → Next experiment
+- Format: Evidence → Hypothesis → Setup → Result → Interpretation → Decision
 
-Epoch index: 1-based. Class order: FMB definition.
-0 Road, 1 Sidewalk, 2 Building, 3 TrafficLight, 4 TrafficSign, 5 Vegetation, 6 Sky, 7 Person, 8 Car,
-9 Truck, 10 Bus, 11 Motorcycle, 12 Bicycle, 13 Pole.
+- Epoch index: 1-based
+- Class order: 0 Road, 1 Sidewalk, 2 Building, 3 TrafficLight, 4 TrafficSign, 5 Vegetation, 6 Sky, 7 Person, 8 Car, 9 Truck, 10 Bus, 11 Motorcycle, 12 Bicycle, 13 Pole
 
 ## 출발점
 
 ### 고정 조건
 
-| 항목 | 값 | 설계에 준 제약 |
+| Item | Condition | Experimental constraint |
 |---|---|---|
-| 분할 | 공식 train 1,220 → train 1,000 / val 220 (고정 시드), 공식 test 280 | 모델 선택은 val로만 한다. test는 리더보드 점수로만 본다 |
-| 평가 | mIoU = 클래스 평균 | 한 클래스가 빈도와 무관하게 1/14 가중치를 가진다. 희귀 클래스가 점수에 크게 작용한다 |
-| 모델 | 두 인코더 모두 MiT-B2 이하, 융합 모듈 포함 총 52M 이하 | 쓸 수 있는 최대 구성은 B2 + B2 (51.55M) |
-| 환경 | Colab T4 1장 | 입력 해상도와 학습 길이의 상한 |
-| 필수 | RGB 단독 대비 IR 기여 ablation 표 | 사이클 1과 4 |
-| 재현 | `runs/<이름>/args.json`, `log.jsonl` 제출, 교수가 재실행 | run별 설정과 로그를 레포에서 추적한다 |
+| Split | train 1,000 / val 220 / test 280 | 모델 선택은 val 기준, test는 최종 확인용 |
+| Metric | 14-class mIoU | 클래스별 동일 가중치 1/14 |
+| Model size | 각 인코더 MiT-B2 이하, 총 52M 이하 | 최대 구성 B2 + B2, 51.55M |
+| Pretraining | ImageNet pretrained MiT만 허용 | 외부 데이터 및 다른 사전학습 제외 |
+| Environment | Colab T4 1장 | 해상도와 batch size 제한 |
+| Required ablation | RGB-only vs RGB+IR | IR 기여 분리 필요 |
+| Reproducibility | `args.json`, `log.jsonl`, 재실행 검증 | run별 설정과 로그 보존 |
 
-### 설계 조건
+### 공통 학습 설정
 
-모든 run이 동일: seed 0, batch 8, AdamW lr 6e-5(디코더 10배), weight decay 0.01,
-warm-up 2 epoch + poly(0.9), 30 epoch, 증강 동일(scale 0.75~1.5, 랜덤 크롭, 좌우 반전 0.5).
-한 번에 한 요소만 바꿨고, run별 설정은 `runs/<이름>/args.json`에 있다.
-Colab 연결이 끊긴 #6, #9는 같은 명령을 다시 실행해 `last.pth`에서 재개했다.
+| Item | Setting |
+|---|---|
+| Seed | 0 |
+| Batch size | 8 |
+| Optimizer | AdamW |
+| Learning rate | encoder 6e-5 / decoder 6e-4 |
+| Weight decay | 0.01 |
+| Schedule | warm-up 2 epoch + poly 0.9 |
+| Training budget | 30 epoch |
+| Augmentation | scale 0.75–1.5, random crop, horizontal flip 0.5 |
+| Model selection | best val mIoU |
 
-### 실험 전에 확인한 데이터 성질
+- 비교당 변경 요소 1개
+- 동일 train/val split 유지
+- #6, #9의 Colab 종료 후 `last.pth` 기반 재개
 
-실험 전 데이터와 기본 설정 확인.
+### 데이터 확인
 
-| 항목 | 값 | 확인한 곳 |
+| Item | Observation | Design implication |
 |---|---|---|
-| 원본 해상도 | 600×800 | val 220장의 라벨 픽셀 합 103,781,695 ÷ 220 = 471,735, 즉 480,000의 98.3% ([classiou_b0_vs_b2.csv](../results/03_capacity/classiou_b0_vs_b2.csv)의 `gt_pixels` 합). 라벨 크기도 600×800 ([dist_class12_val_images.csv](../results/01_baseline/dist_class12_val_images.csv)) |
-| Bicycle(12) train 노출 | 10장, 전체 픽셀의 0.0017%. 14개 클래스 중 최소 | [dist_train_class.csv](../results/01_baseline/dist_train_class.csv) |
-| Bicycle val 노출 | 220장 중 2장, 합계 994픽셀 (183, 811) | [dist_class12_val_images.csv](../results/01_baseline/dist_class12_val_images.csv) |
-| 입력 축소율 | 384×512는 원본의 0.64배, 480×640은 0.8배 | 600×800 기준 계산 |
+| Original resolution | 600×800 | 384×512와 480×640 비교 필요 |
+| Bicycle train exposure | 10장, 전체 픽셀의 0.0017% | 희귀 클래스 노출 부족 가능성 |
+| Bicycle val exposure | 2장, 총 994픽셀 | Bicycle IoU의 높은 변동성 |
+| Input scale | 384×512는 원본의 0.64배, 480×640은 0.8배 | 작은 물체 손실 가능성 |
 
 ### 제공 베이스라인
 
-교수 제공 베이스라인(MiT-B0, 384×512)의 test mIoU는 RGB 단독 52.77, Sum 56.30이다
-([report.md 실험 표의 참고 행](../results/report.md#2-전체-실험-결과)).
-같은 설정으로 재현한 val mIoU는 RGB 단독 61.53, Sum 65.48이고, 교수 제공 기준값(61.50, 65.40)과 거의 같다
-([01_baseline](../results/01_baseline/README.md)).
+- Architecture: MiT-B0, 384×512
+- Instructor test: RGB-only 52.77 / Sum 56.30
+- Reproduced val: RGB-only 61.53 / Sum 65.48
+- Instructor val reference: RGB-only 61.50 / Sum 65.40
+- Conclusion: 기준선 재현 완료
 
 ## 사이클 1. 기준선과 희귀 클래스
 
-### 가설 1-A. IR은 RGB를 보완
+### 가설 1-A. IR은 RGB를 보완한다
 
-Evidence:
-1. 제공 베이스라인에서 IR 융합의 이득이 test +3.53이다 (52.77 → 56.30). [report.md](../results/report.md#2-전체-실험-결과)
-2. FMB에는 안개, 폭우, 저조도 장면이 들어 있다. [루트 README](../README.md)의 "데이터" 항목
-3. 과제가 RGB 단독 대비 IR 기여를 ablation 표로 요구한다. [루트 README](../README.md)의 "규칙"
+Evidence
 
-Hypothesis: 단계별 Sum 융합이 RGB 단독보다 mIoU가 높음
+- 제공 베이스라인의 test 이득 +3.53pp
+- 안개·폭우·저조도 중심의 FMB 환경
+- RGB-only 대비 IR 기여 ablation 요구
 
-Motivation: 제공 베이스라인의 IR 이득과 FMB의 악천후·저조도 조건. 동일 경향의 재현 여부 확인.
+Hypothesis
 
-Setup: B0, 384×512에서 `--fusion rgb`와 `--fusion sum`만 변경. 실험 #1, #2.
+- Stage-wise Sum fusion의 RGB-only 대비 mIoU 상승
 
-Criterion: Sum과 RGB 단독의 val mIoU 차이.
+Setup
 
-Result: RGB 단독 61.53 → Sum 65.48 (+3.95). 클래스별로는 12개가 오르고 Person이 +19.26으로 가장 크다.
-TrafficSign은 −0.39, Bicycle은 두 모델 모두 0이다. [classiou_rgb_vs_sum.csv](../results/01_baseline/classiou_rgb_vs_sum.csv)
+- Backbone: MiT-B0
+- Input: 384×512
+- Comparison: `--fusion rgb` vs `--fusion sum`
+- Runs: #1, #2
 
-Interpretation: 가설과 일치.
+Criterion
 
-Next experiment: 클래스별 IR 기여 편차 −0.39 ~ +19.26을 근거로 융합 방식 비교.
-Bicycle이 IoU 0인 것은 가설 1-B의 근거가 되었다.
+- 전체 val mIoU 차이
+- 클래스별 IoU 변화
 
-### 가설 1-B. 희귀 클래스는 노출을 늘리면 학습 가능
+Result
 
-Evidence:
-1. Bicycle IoU가 RGB 단독과 Sum 모두 0이다. [classiou_rgb_vs_sum.csv](../results/01_baseline/classiou_rgb_vs_sum.csv)
-2. train에서 Bicycle은 10장, 전체 픽셀의 0.0017%로 14개 중 최소이고, Car는 928장이다. [dist_train_class.csv](../results/01_baseline/dist_train_class.csv)
-3. 정답 Bicycle 픽셀의 68.41%가 Car로 예측된다 (RGB 단독은 43.46%). [confusion_class7_12_rgb_vs_sum.csv](../results/01_baseline/confusion_class7_12_rgb_vs_sum.csv)
-4. mIoU가 클래스 평균이라 Bicycle 한 클래스가 전체의 1/14을 차지한다. [과제의 평가 조건](#과제가-고정한-조건)
+- Overall: 61.53 → 65.48, +3.95pp
+- Improved classes: 12/14
+- Largest gain: Person +19.26pp
+- Negative change: TrafficSign −0.39pp
+- Bicycle: 두 모델 모두 IoU 0
 
-Hypothesis: Bicycle이 들어 있는 이미지를 더 자주 보여 주면 Bicycle IoU가 오르고 전체 mIoU도 오른다.
+Interpretation
 
-Motivation: 융합 방식과 무관한 Bicycle IoU 0, Car로 집중된 오답, train 노출 부족 가능성. mIoU에서 Bicycle 가중치 1/14.
+- IR 보완 효과 확인
+- 클래스별 IR 기여 편차 확인
+- Bicycle 성능 정체 확인
 
-Setup: B0 Sum에서 Bicycle 포함 train 10장의 샘플링 가중치를 11로 조정. 목표 비율 10%, 복원 추출. 계산식 10w / (990 + 10w) = 0.10. 모델과 손실은 유지하고 train 라벨로만 가중치 생성. 실험 #3.
+Decision
 
-Criterion: Bicycle IoU 0 탈출 여부, 전체 mIoU 유지 여부.
+- 융합 구조 비교 진행
+- Bicycle 문제 별도 분리
 
-Result: Bicycle 0 → 43.40, 전체 65.48 → 67.97 (+2.49).
-한계: val에서 Bicycle이 나오는 이미지가 2장뿐이라 43.40의 변동 폭이 크다. [dist_class12_val_images.csv](../results/01_baseline/dist_class12_val_images.csv)
-다른 클래스에 미친 영향은 클래스별로 비교하지 않았다.
+### 가설 1-B. 희귀 클래스는 노출을 늘리면 학습된다
 
-Interpretation: val 결과는 가설과 일치. Bicycle 포함 val 2장에 따른 일반화 판단 한계.
+Evidence
 
-Next experiment: test 미제출에 따른 일반화 확인 보류. 최종 설정에서 동일 sampling 재검증.
+- RGB-only와 Sum 모두 Bicycle IoU 0
+- Bicycle 포함 train 이미지 10장
+- Bicycle 비중 전체 train 픽셀의 0.0017%
+- Bicycle 정답 픽셀의 Car 오분류 집중
+- 클래스당 동일 mIoU 가중치 1/14
+
+Hypothesis
+
+- Bicycle 포함 이미지의 노출 증가에 따른 Bicycle IoU 및 전체 mIoU 상승
+
+Setup
+
+- Base model: B0 Sum
+- Sampler: `WeightedRandomSampler`, 복원 추출
+- Positive images: 10장
+- Positive weight: 11
+- Target fraction: 10%
+- Run: #3
+
+Criterion
+
+- Bicycle IoU 0 탈출 여부
+- 전체 mIoU 유지 여부
+
+Result
+
+- Bicycle: 0 → 43.40
+- Overall: 65.48 → 67.97, +2.49pp
+
+Interpretation
+
+- val 기준 가설 지지
+- 희귀 클래스 노출 부족 가능성 확인
+- Bicycle 포함 val 2장에 따른 높은 불확실성
+- 다른 클래스 영향 분석 부족
+
+Decision
+
+- B0 결과의 test 제출 보류
+- 최종 설정에서 동일 sampling 재검증
 
 ## 사이클 2. 융합 구조와 초기화
 
-### 가설 2-A. 학습형 융합이 고정 Sum보다 나음
+### 가설 2-A. 학습형 융합이 고정 Sum보다 낫다
 
-Evidence:
-1. IR 기여가 클래스마다 −0.39(TrafficSign) ~ +19.26(Person)으로 크게 다르다. [classiou_rgb_vs_sum.csv](../results/01_baseline/classiou_rgb_vs_sum.csv)
-2. Sum은 두 특징을 모든 클래스, 모든 위치에 1:1로 더한다. [fusion.py](../fusion_seg/fusion.py)의 `SumFusion`
+Evidence
 
-Hypothesis: 두 모달리티의 비중을 학습하는 융합(Concat, Adaptive)이 Sum보다 mIoU가 높다.
+- 클래스별 IR 기여 −0.39pp에서 +19.26pp
+- 모든 채널과 위치에 동일 비중을 적용하는 Sum
+- 모달리티별 중요도 학습 가능성
 
-Motivation: 큰 클래스별 IR 기여 편차. 고정 Sum 대비 학습형 모달리티 비중의 효과 확인.
+Hypothesis
 
-Setup: B0, 384×512에서 융합만 바꿨다. Concat은 두 특징을 이어 붙인 뒤 1×1 conv로 채널을 줄이고, Adaptive는 채널별 게이트로 두 특징을 섞는다.
-Adaptive 게이트는 시작 출력이 Sum과 같도록 0으로 초기화. 실험 #4, #5.
+- Concat 또는 Adaptive fusion의 Sum 대비 mIoU 상승
 
-Criterion: Sum 대비 val mIoU. 단일 seed를 고려해 0.5pp 이내 차이는 우열 판단 제외.
+Setup
 
-Result: Concat 62.47 (Sum 대비 −3.01), Adaptive 65.35 (−0.13). 둘 다 Sum 65.48을 넘지 못했다.
-Adaptive는 Concat보다 모든 클래스에서 같거나 높다. [classiou_concat_vs_adaptive.csv](../results/02_fusion/classiou_concat_vs_adaptive.csv)
+- Backbone: MiT-B0
+- Input: 384×512
+- Fixed factor: 학습 설정 전체
+- Changed factor: fusion module
+- Concat: channel concatenation + 1×1 convolution
+- Adaptive: channel-wise modality gate, Sum-equivalent initialization
+- Runs: #4, #5
 
-Interpretation: 학습형 융합 우위 가설과 불일치.
+Criterion
 
-Next experiment: 이후 융합 방식을 Sum으로 고정.
-Concat이 Sum보다 낮은 이유는 가설 2-B로 따로 확인했다.
+- Sum 대비 val mIoU
+- 단일 seed를 고려한 0.5pp 이내 차이의 우열 판단 제외
 
-### 가설 2-B. Concat이 낮은 원인은 랜덤 초기화
+Result
 
-Evidence:
-1. Concat은 파라미터가 7.23M으로 Sum의 7.04M보다 많은데 val이 3.01 낮다. 용량 부족으로는 설명되지 않는다. [report.md](../results/report.md#2-전체-실험-결과)의 #2, #4
-2. 융합 출력이 다음 RGB stage의 입력이다. [model.py 98~102행](../fusion_seg/model.py#L98-L102)
-3. Sum의 시작 출력은 `x + a`이고, Concat의 1×1 conv는 랜덤 초기화라 시작 출력이 `x + a`가 아니다. [fusion.py](../fusion_seg/fusion.py)의 `ConcatConvFusion`
+- Sum: 65.48
+- Concat: 62.47, −3.01pp
+- Adaptive: 65.35, −0.13pp
+- Adaptive의 Concat 대비 13개 클래스 우위, Bicycle 동률
 
-Hypothesis: Concat이 낮은 것은 랜덤 초기화된 1×1 conv가 학습 초반에 사전학습된 RGB 특징을 깨뜨리기 때문이다.
+Interpretation
 
-Motivation: Sum보다 많은 파라미터에도 낮은 Concat 성능. 랜덤 초기화된 1×1 conv가 사전학습 특징에 미치는 영향 확인.
-이 설명이 맞다면 격차는 초반에 가장 크고 학습이 진행되며 줄어야 한다.
+- 학습형 융합 우위 가설 기각
+- Adaptive와 Sum의 차이는 판단 보류 범위
+- Concat의 뚜렷한 성능 저하
 
-Setup: 시작 출력이 `x + a`가 되도록 Sum에 concat 분기를 잔차로 추가. 분기의 마지막 conv는 0으로 초기화. 실험 #6.
-Concat 대비 바뀐 것은 시작 출력만이 아니다. 잔차 형태이고 분기 안에 BatchNorm, GELU, 두 번째 conv가 들어 있다.
-그래서 초기화 하나의 효과를 분리한 실험은 아니다. 이를 보완하려고 시간에 따른 격차를 보고, 구조가 다른 Adaptive 결과도 함께 확인했다.
+Decision
 
-Criterion: Concat_res − Concat의 epoch별 격차와 초반 최대 여부.
+- 후속 실험의 Sum fusion 고정
+- Concat 저하 원인 별도 확인
 
-Result: 62.47 → 64.95 (+2.48). 격차는 ep1 +1.46, ep4 +9.74(최대), ep10 +3.14, ep20 +3.41, ep30 +2.56이고 모든 epoch에서 양수다.
-단조 감소는 아니다(ep10 +3.14 → ep20 +3.41). 교차 확인으로 구조가 다른 Adaptive − Concat도 ep4에서 +9.30으로 최대다.
-[run_gap_concat_res_vs_concat.csv](../results/02_fusion/run_gap_concat_res_vs_concat.csv), [curve_gap_concat_res_vs_concat.png](../results/02_fusion/curve_gap_concat_res_vs_concat.png), [run_gap_adaptive_vs_concat.csv](../results/02_fusion/run_gap_adaptive_vs_concat.csv)
+### 가설 2-B. Concat이 낮은 원인은 랜덤 초기화다
 
-Interpretation: 초기화 영향 설명과 일치. 잔차 형태와 분기 구조 차이에 따른 원인 분리 한계.
+Evidence
 
-Next experiment: Sum 고정 후 백본과 입력 크기 비교.
+- Concat 7.23M, Sum 7.04M
+- 더 많은 파라미터에도 Concat −3.01pp
+- 사전학습 특징 뒤에 추가된 랜덤 초기화 1×1 convolution
+- Sum과 다른 초기 출력
 
-### 가설 2-C. 입력 단계에서 합쳐도 IR 이득을 얻음
+Hypothesis
 
-Evidence:
-1. 융합 위치(early, sum, 후기) 비교가 과제의 개선 아이디어 4번이다. [루트 README](../README.md)의 "개선 아이디어"
-2. 제공 `model.py`의 Early는 입력에서 RGB와 IR을 합치고 인코더를 하나만 쓴다. 파라미터가 3.72M으로 RGB 단독(3.7M)과 같은 수준이다. [model.py](../fusion_seg/model.py)
-3. 사이클 1에서 단계별 융합(Sum) 한 가지만 비교한 상태다. [01_baseline](../results/01_baseline/README.md)
+- 랜덤 초기화에 따른 학습 초반의 사전학습 특징 훼손
+- 초기 격차 최대 후 점진적 감소
 
-Hypothesis: 인코더 하나로 입력 단계에서 합쳐도 Sum에 가까운 이득을 얻는다. 파라미터는 절반이다.
+Setup
 
-Motivation: 인코더 하나를 쓰는 Early의 낮은 비용. 입력 단계 융합의 IR 이득 확인.
+- Concat residual branch 추가
+- Initial output: `x + a`
+- Last convolution: zero initialization
+- Run: #6
+- Cross-check: Adaptive와 Concat의 epoch별 격차
 
-Setup: B0, 384×512에서 `--fusion early`만 변경. 실험 #7.
+Criterion
 
-Criterion: Sum, RGB 단독 대비 val mIoU.
+- Concat_res − Concat의 epoch별 차이
+- 학습 초반 최대 격차 여부
 
-Result: 62.19. Sum보다 3.29 낮고 RGB 단독(61.53) 대비로는 +0.66이다.
+Result
 
-Interpretation: RGB 단독 대비 +0.66pp, Sum 대비 −3.29pp. 가설과 불일치.
+- Concat: 62.47
+- Concat_res: 64.95, +2.48pp
+- Gap: ep1 +1.46 / ep4 +9.74 / ep10 +3.14 / ep20 +3.41 / ep30 +2.56
+- Adaptive − Concat 최대 격차: ep4 +9.30pp
 
-Next experiment: IR 전용 인코더를 둔 두 인코더 구조 유지.
-ImageNet RGB로 사전학습된 인코더 하나로는 IR 고유의 특징을 뽑기 어려웠을 것으로 해석한다(이 해석은 따로 검증하지 않았다).
+Interpretation
+
+- 초기화 영향 가능성 지지
+- 학습 초반 최대 격차 확인
+- 단조 감소 아님
+- 초기화 외 잔차 구조·BatchNorm·GELU 차이 존재
+- 단일 원인 분리 불가
+
+Decision
+
+- Concat 계열 추가 확장 중단
+- Sum fusion 유지
+
+### 가설 2-C. 입력 단계에서 합쳐도 IR 이득을 얻는다
+
+Evidence
+
+- Early fusion의 단일 인코더 구성
+- Early 3.72M, RGB-only 3.70M
+- Dual encoder 대비 약 절반의 모델 크기
+
+Hypothesis
+
+- Early fusion의 RGB-only 대비 상승 및 Sum 근접 성능
+
+Setup
+
+- Backbone: MiT-B0
+- Input: 384×512
+- Fusion: `--fusion early`
+- Run: #7
+
+Criterion
+
+- RGB-only 및 Sum 대비 val mIoU
+
+Result
+
+- Early: 62.19
+- RGB-only 대비 +0.66pp
+- Sum 대비 −3.29pp
+
+Interpretation
+
+- 제한적인 IR 이득
+- Sum 근접 가설 기각
+- 단일 RGB-pretrained encoder의 IR 특징 추출 한계 가능성
+- 원인 검증 없음
+
+Decision
+
+- RGB·IR dual encoder 구조 유지
 
 ## 사이클 3. 용량과 해상도
 
-### 가설 3-A. B0의 병목은 모델 용량이 원인
+### 가설 3-A. B0의 병목은 모델 용량이다
 
-Evidence:
-1. 융합 5종(Early, Concat, Concat_res, Adaptive, Sum)을 모두 바꿔도 62.19 ~ 65.48, 폭이 3.3pp에 그친다. [report.md](../results/report.md#2-전체-실험-결과)의 #2, #4, #5, #6, #7
-2. 총 52M 상한 중 7.04M만 쓰고 있다. [report.md](../results/report.md#2-전체-실험-결과)의 #2와 [루트 README](../README.md)의 "규칙"
+Evidence
 
-Hypothesis: B0의 한계는 융합 방식이 아니라 모델 용량이다. 인코더를 B2로 키우면 오른다.
+- B0 fusion 5종의 val 범위 62.19–65.48
+- Fusion 변경 최대 폭 약 3.3pp
+- B0 Sum 7.04M
+- 허용 상한 약 52M
 
-Motivation: 융합 구조 5종의 차이 3.3pp 이내, 허용 52M 중 7.04M만 사용. 백본 용량의 영향 확인.
+Hypothesis
 
-Setup: Sum과 입력 384×512 고정, 두 인코더만 B0 → B2로 변경. 총 51.55M. 실험 #8.
+- Fusion 방식보다 backbone capacity의 더 큰 영향
+- B0에서 B2 변경 시 전반적 성능 상승
 
-Criterion: 전체 mIoU와 클래스별 IoU. 여러 클래스에서 같은 방향의 상승 여부.
+Setup
 
-Result: 14개 클래스 전부 상승, 65.48 → 72.74 (+7.26, 전체 실험 중 최대). test는 63.90.
-[classiou_b0_vs_b2.csv](../results/03_capacity/classiou_b0_vs_b2.csv)
+- Fusion: Sum 고정
+- Input: 384×512 고정
+- Backbone: MiT-B0 → MiT-B2
+- Parameters: 7.04M → 51.55M
+- Run: #8
 
-Interpretation: 14개 클래스 전체 상승. B0의 용량 병목 가설과 일치.
+Criterion
 
-Next experiment: 작은 물체 클래스의 큰 상승폭을 근거로 입력 해상도 비교.
+- 전체 mIoU 변화
+- 다수 클래스의 동일 방향 상승
 
-### 가설 3-B. 입력 축소가 작은 물체를 지움
+Result
 
-Evidence:
-1. B2의 이득이 작은 물체에 집중되어 있다: Bicycle +39.83, TrafficLight +10.21, 반면 Sky +0.45, Road +1.31. [classiou_b0_vs_b2.csv](../results/03_capacity/classiou_b0_vs_b2.csv)
-2. 384×512는 원본(600×800)의 0.64배다. [데이터 성질](#실험-전에-확인한-데이터-성질)
+- Overall: 65.48 → 72.74, +7.26pp
+- Test: 63.90
+- Class-wise: 14개 클래스 전체 상승
+- Largest gain: Bicycle +39.83pp
 
-Hypothesis: 해상도를 올리면 작은 물체 클래스가 오른다.
+Interpretation
 
-Motivation: 원본 대비 0.64배인 384×512 입력과 작은 물체 클래스의 큰 상승폭. 입력 크기 영향 확인.
-해상도는 파라미터 수와 무관하므로 용량 실험(3-A)과 따로 검증할 수 있다.
-다만 근거 1만으로는 용량 증가의 효과와 해상도 부족을 구분하지 못하므로 해상도를 따로 바꿔 본다.
+- 전체 실험 중 최대 향상
+- B0 capacity bottleneck 가설 지지
+- 희귀·소형 클래스의 큰 상승폭
 
-Setup: B2 Sum을 고정하고 입력만 384×512 → 480×640으로 올렸다. 원본의 0.8배이고, 3:4 비율과 32의 배수를 유지한다.
-Colab T4, batch 8에서 실행 가능한 크기 선택. 추가 해상도 탐색 없음. 파라미터 51.55M 유지. 실험 #9.
+Decision
 
-Criterion: 작은 물체 클래스와 큰 영역 클래스의 IoU 변화.
+- MiT-B2 유지
+- 입력 해상도 효과 추가 확인
 
-Result: Bicycle +6.77, Pole +3.43, Person +2.02, TrafficLight +1.32. Road +0.16, Sky +0.07로 큰 클래스는 거의 그대로다.
-예외: Bus −3.33, Truck −0.27. 전체 val 72.74 → 73.65, +0.91pp. test 63.90 → 66.13, +2.23pp.
-[classiou_384_vs_480.csv](../results/03_capacity/classiou_384_vs_480.csv)
+### 가설 3-B. 입력 축소가 작은 물체를 지운다
 
-Interpretation: 작은 물체 클래스 중심 상승, 큰 영역 클래스 변화 미미. 가설과 대체로 일치. Bus 하락 원인 미확인.
+Evidence
 
-Next experiment: B2, 480×640, Sum을 제출 후보 #9로 선정. 최종 설정의 IR 기여 재측정.
+- Bicycle +39.83, TrafficLight +10.21의 큰 B2 이득
+- Sky +0.45, Road +1.31의 제한적 변화
+- 384×512 입력의 원본 대비 0.64배 축소
+
+Hypothesis
+
+- 입력 해상도 증가에 따른 작은 물체 클래스 중심의 IoU 상승
+
+Setup
+
+- Backbone: MiT-B2 고정
+- Fusion: Sum 고정
+- Input: 384×512 → 480×640
+- Original scale: 0.64 → 0.8
+- Parameters: 51.55M 유지
+- Run: #9
+
+Criterion
+
+- 작은 물체 클래스와 큰 영역 클래스의 IoU 변화 비교
+
+Result
+
+- Overall val: 72.74 → 73.65, +0.91pp
+- Test: 63.90 → 66.13, +2.23pp
+- Gains: Bicycle +6.77, Pole +3.43, Person +2.02, TrafficLight +1.32
+- Stable classes: Road +0.16, Sky +0.07
+- Negative changes: Bus −3.33, Truck −0.27
+
+Interpretation
+
+- 작은 물체 중심의 상승
+- 큰 영역 클래스의 변화 미미
+- 가설 대체로 지지
+- Bus 하락 원인 미확인
+
+Decision
+
+- B2, Sum, 480×640을 submission candidate로 선정
+- 최종 설정에서 IR 기여 재측정
 
 ## 사이클 4. 최종 설정에서 IR 기여 분리
 
 ### 가설 4. 최종 설정에서도 IR이 기여하고, 기여는 어두운 장면에서 크다
 
-Evidence:
-1. IR의 효과는 B0에서만 확인했다 (+3.95). [classiou_rgb_vs_sum.csv](../results/01_baseline/classiou_rgb_vs_sum.csv)
-2. 과제가 최종 설정에서의 RGB 단독 대비 IR 기여 ablation을 요구한다. [루트 README](../README.md)의 "규칙"
-3. 데이터에 저조도 장면이 들어 있다. [루트 README](../README.md)의 "데이터" 항목
+Evidence
 
-Hypothesis: B2, 480×640에서도 Sum이 RGB 단독보다 높고, 그 차이는 RGB가 약한 어두운 장면일수록 크다.
+- B0에서 확인된 IR 이득 +3.95pp
+- 최종 설정의 RGB-only ablation 필요
+- 저조도 장면에서 RGB 정보 감소 가능성
 
-Motivation: B0에서 확인한 IR 이득의 B2 유지 여부. 최종 설정의 RGB 단독 모델과 비교.
-다만 Sum 모델은 RGB 단독보다 인코더가 하나 더 있어 파라미터가 27.36M에서 51.55M으로 늘어난다. 전체 mIoU 차이만으로는 IR의 정보 효과와 용량 효과가 섞인다.
-이를 가르려고 밝기 구간별로 나눈다. 용량 효과라면 장면 밝기와 무관하게 비슷하게 오르고, IR이 조명 부족을 보완하는 것이라면 어두울수록 커진다(근거 3).
+Hypothesis
 
-Setup: B2, 480×640 고정. RGB 단독 #10과 Sum #9 비교.
-val 220장을 RGB 평균 밝기로 정렬해 73 / 73 / 74장 세 그룹으로 나눴다. 낮/밤 라벨이 아니라 이미지 밝기 기준이다.
+- B2, 480×640에서도 RGB+IR의 RGB-only 대비 상승
+- 어두운 장면에서 더 큰 IR 기여
 
-Criterion: 전체 mIoU와 밝기 그룹별 차이. 어두운 그룹에서 더 큰 격차 여부.
+Setup
 
-Result: 전체 70.99 → 73.65 (+2.66).
-밝기별 IR 기여는 어두움 +4.64, 중간 +2.80, 밝음 +0.89. [miou_brightness_rgb_vs_sum.csv](../results/04_ir_contribution/miou_brightness_rgb_vs_sum.csv)
-클래스별로는 Person +18.79(어두운 장면만 보면 42.32 → 65.82), TrafficSign −0.75, Bus −2.60.
-[classiou_rgb_vs_sum.csv](../results/04_ir_contribution/classiou_rgb_vs_sum.csv), [classiou_dark_rgb_vs_sum.csv](../results/04_ir_contribution/classiou_dark_rgb_vs_sum.csv)
-epoch별 IR 기여는 ep1 −3.63, ep5 +2.07, ep10 +2.41, ep20 +3.36, ep30 +2.66이다. [run_gap_b2_sum_480_vs_b2_rgb_480.csv](../results/04_ir_contribution/run_gap_b2_sum_480_vs_b2_rgb_480.csv)
+- Backbone: MiT-B2
+- Input: 480×640
+- Comparison: RGB-only #10 vs Sum #9
+- Brightness split: RGB 평균 밝기 기준 73 / 73 / 74장
+- Groups: dark / middle / bright
 
-Interpretation: 전체와 세 밝기 그룹 결과 모두 가설과 일치. 추가 인코더에 따른 용량 증가 효과의 분리 한계. [측정 한계](#측정-한계)
+Criterion
 
-Next experiment: RGB+IR 구조 유지. 최종 설정에서 oversampling 재검증.
+- 전체 mIoU 차이
+- 밝기 그룹별 RGB+IR 이득
+- 어두운 그룹의 최대 이득 여부
+
+Result
+
+- Overall: 70.99 → 73.65, +2.66pp
+- Dark: +4.64pp
+- Middle: +2.80pp
+- Bright: +0.89pp
+- Person: +18.79pp
+- Dark-group Person: 42.32 → 65.82, +23.50pp
+- Negative changes: TrafficSign −0.75, Bus −2.60
+- Epoch gap: ep1 −3.63 / ep5 +2.07 / ep10 +2.41 / ep20 +3.36 / ep30 +2.66
+
+Interpretation
+
+- 최종 설정의 IR 기여 확인
+- 어두운 장면일수록 큰 상승폭
+- 저조도 보완 가설 지지
+- RGB-only 27.36M과 Sum 51.55M의 capacity 차이 존재
+- IR 정보 효과와 추가 인코더 효과의 완전한 분리 불가
+
+Decision
+
+- RGB+IR dual encoder 유지
+- 최종 설정에서 oversampling 재검증
 
 ## 사이클 5. 최종 설정에서 샘플링
 
 ### 가설 5. Bicycle oversampling은 최종 설정에서도 val과 test를 함께 올린다
 
-Evidence:
-1. B0에서 oversampling이 전체 +2.49, Bicycle 0 → 43.40을 만들었다. [01_baseline](../results/01_baseline/README.md)
-2. 실험 #3의 test 점수 없음. [report.md](../results/report.md#4-리더보드-제출)의 제출 표
-3. 평가가 클래스 평균이라 Bicycle이 1/14 가중치이고, val에서 Bicycle은 2장(994픽셀)뿐이다. [dist_class12_val_images.csv](../results/01_baseline/dist_class12_val_images.csv)
+Evidence
 
-Hypothesis: 최종 설정(B2, 480×640)에서도 Bicycle oversampling이 val과 test mIoU를 함께 올린다.
+- B0 oversampling의 overall +2.49pp
+- B0 Bicycle IoU 0 → 43.40
+- B0 oversampling의 test 미제출
+- Bicycle 포함 val 이미지 2장
 
-Motivation: B0 oversampling의 test 미검증, Bicycle 포함 val 2장. 최종 설정의 val/test 방향 비교.
+Hypothesis
 
-Setup: #9와 같은 설정에 Bicycle 포함 10장 가중치 11, 목표 비율 10%만 추가. 실험 #11.
-test 점수는 모델 선택에 쓰지 않고, val에서 한 판단이 일반화되는지 확인하는 데에만 본다.
+- B2, 480×640에서도 oversampling에 따른 val과 test 동반 상승
 
-Criterion: val과 test mIoU의 변화 방향.
+Setup
 
-Result: val +0.81 (73.65 → 74.46), test −0.49 (66.13 → 65.64). 방향이 갈렸다.
-- val 원인 분해: 상승 +0.81pp 중 Bicycle 기여 +1.14pp, 나머지 13개 클래스 합계 −0.33pp. Bicycle +15.98pp, 8개 클래스 하락. TrafficSign −2.10, Motorcycle −1.69, Truck −1.38 등. [classiou_sum_vs_oversample.csv](../results/05_oversampling_final/classiou_sum_vs_oversample.csv)
-- 교차 확인: Bicycle을 뺀 val 13클래스 mIoU가 75.73 → 75.37 (−0.36)이고, test −0.49와 방향과 크기가 비슷하다. val 안에서도 Bicycle 외 클래스는 오르지 않았다.
-- val−test 격차는 #9가 7.52, #11이 8.82로 벌어졌다.
-- #11 − #9 epoch별 val 격차: epoch 3을 제외한 29개 epoch에서 양수. epoch 6 +6.34pp, epoch 30 +0.81pp. [run_gap_b2_sum_480_oversample10_vs_b2_sum_480.csv](../results/05_oversampling_final/run_gap_b2_sum_480_oversample10_vs_b2_sum_480.csv)
+- Base model: #9 B2 Sum 480×640
+- Positive images: 10장
+- Positive weight: 11
+- Target fraction: 10%
+- Run: #11
 
-상세는 [05_oversampling_final](../results/05_oversampling_final/README.md).
+Criterion
 
-Interpretation: val +0.81pp, test −0.49pp. 가설과 불일치.
+- val과 test mIoU의 변화 방향
+- Bicycle과 나머지 13개 클래스의 기여 분리
 
-Final decision: Bicycle에 집중된 val 상승과 나머지 13개 클래스 하락. #11 대신 #9 유지.
+Result
+
+- Val: 73.65 → 74.46, +0.81pp
+- Test: 66.13 → 65.64, −0.49pp
+- Bicycle: +15.98pp
+- Bicycle의 전체 mIoU 기여: +1.14pp
+- 나머지 13개 클래스 합계 기여: −0.33pp
+- Bicycle 제외 13-class mIoU: 75.73 → 75.37, −0.36pp
+- Negative classes: 8개
+- Val–test gap: 7.52 → 8.82pp
+
+Interpretation
+
+- val과 test의 반대 방향
+- val 상승의 Bicycle 집중
+- 나머지 클래스의 평균 하락
+- 최종 설정에서 가설 기각
+- Bicycle 포함 val 2장에 따른 과대평가 가능성
+
+Final decision
+
+- #11 제외
+- #9 유지
+- Final model: MiT-B2, Sum, 480×640
 
 ## 결과가 예상과 달랐던 실험
 
-| 비교 | 결정 |
-|---|---|
-| 2-A 학습형 융합이 Sum보다 낫다 | 융합은 Sum으로 고정. 이후 모든 사이클이 Sum 위에서 진행되었다 |
-| 2-C 입력 단계 융합으로 충분하다 | IR 전용 인코더를 둔 두 인코더 구조를 유지 |
-| 5 최종 설정에서 oversampling이 전체를 올린다 | 최종 모델은 #9로 유지, #11은 사용하지 않음 |
+| Hypothesis | Result | Decision |
+|---|---|---|
+| 2-A. 학습형 fusion > Sum | Adaptive −0.13pp, Concat −3.01pp | Sum 고정 |
+| 2-C. Early fusion ≈ Sum | Early −3.29pp | Dual encoder 유지 |
+| 5. Oversampling의 val·test 동반 상승 | val +0.81pp, test −0.49pp | #11 제외, #9 유지 |
 
 ## 리더보드 제출
 
-11개 중 4개를 올렸다.
-
-| 제출 ID | 모델 | val | test | 비고 |
+| Submission ID | Model | Val | Test | Purpose |
 |---|---|---:|---:|---|
-| 1058499 | #5 B0 Adaptive | 65.35 | 55.84 | 학습형 융합 중 val 최고 (Concat 62.47, Concat_res 64.95) |
-| 1060429 | #8 B2 Sum 384×512 | 72.74 | 63.90 | 제출 시점 val 최고 갱신 |
-| 1061666 | #9 B2 Sum 480×640 | 73.65 | 66.13 | 최종 모델, val 최고 갱신 |
-| 1062714 | #11 B2 Sum 480×640 + Oversampling | 74.46 | 65.64 | 사이클 5 검증. 최종 모델로 쓰지 않음 |
+| 1058499 | #5 B0 Adaptive | 65.35 | 55.84 | 학습형 fusion 대표 제출 |
+| 1060429 | #8 B2 Sum 384×512 | 72.74 | 63.90 | Backbone scaling 확인 |
+| 1061666 | #9 B2 Sum 480×640 | 73.65 | 66.13 | Final model |
+| 1062714 | #11 B2 Sum 480×640 + Oversampling | 74.46 | 65.64 | Sampling 일반화 확인 |
 
-#8, #9, #11은 올린 시점에 val 최고를 갱신한 모델이다. 모델 선택은 val로만 했고, test 점수에 맞춘 조정은 없다.
-#3의 val 67.97은 #5의 65.35보다 높지만 미제출. 사유 미확정.
-
-## 측정 한계
-
-- 단일 seed. 전 실험이 seed 0이다. 0.5pp 이내 차이는 순위를 말하지 않았고(Sum 65.48, Adaptive 65.35, Concat_res 64.95), 주장한 차이는 IR +3.95, B2 +7.26, Concat −3.01처럼 훨씬 큰 것들이다.
-- 30 epoch는 수렴점이 아니라 고정한 예산이다. 로그가 있는 run은 모두 epoch 20 이후 마지막까지 +1.2 이상 오르고 있고 best epoch가 27~30이다. [run_convergence.csv](../results/00_overview/run_convergence.csv)
-- val과 test의 격차. #9는 val 73.65, test 66.13으로 7.5pp 차이가 난다. 모델 순서는 val과 test에서 같았다 (#5 < #8 < #9).
-- Bicycle 평가. val에 2장뿐이라 Bicycle IoU는 변동이 크고, 사이클 1-B와 5의 결론은 이 한계 안에서만 읽어야 한다.
-- IR 기여의 용량 교란. 사이클 4의 Sum은 RGB 단독보다 인코더가 하나 많다. 보조 인코더의 입력만 RGB로 바꾼 같은 구조를 한 번 더 돌리면 분리되지만(run 1개, 약 56분) 아직 돌리지 않았다.
-- 융합 비교는 B0에서만. B2에서도 Sum이 최선인지는 보지 않았다.
-- 가설 2-B의 변인. Concat_res는 초기화 외에 잔차 형태와 분기 구조도 Concat과 다르다. 초반 격차와 Adaptive 교차 확인으로 보완했다.
-- 탐색하지 않은 축. 손실은 전 실험 CE 단독이다 (CE + Lovász 등 미비교). oversampling 비율은 10% 한 가지만 썼다.
-- 밝기 그룹은 날씨나 시간대 라벨이 아니다. RGB 평균 밝기로 나눈 세 구간이다.
-- 해결하지 못한 오류. 젖은 노면과 야간 조명에서 Sidewalk ↔ Road 혼동이 남아 있다. [06_final_model](../results/06_final_model/README.md)
+- Model selection: val mIoU 기준
