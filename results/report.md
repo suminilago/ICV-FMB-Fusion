@@ -1,108 +1,122 @@
-# Track A: FMB RGB–IR Fusion Segmentation
+# 트랙 A: FMB RGB–열화상(IR) 융합 세그멘테이션
 
-- Dataset: FMB RGB+IR, 14 classes
-- Leaderboard account: `reduce_l`
-- Final setup: RGB·IR MiT-B2 encoders, stage-wise Sum fusion, 480×640 input, 51.55M parameters
-- Final performance: val mIoU 73.65 / test mIoU 66.13, Codabench submission 1061666
-- Experiment rationale: [experiment design](../docs/experiment_design.md)
+컴퓨터비전 기말 프로젝트 트랙 A (FMB, RGB + IR, 14 클래스). 리더보드 팀 계정: `reduce_l`.
 
-## 1. 실험 조건
+**최종 모델**: SegFormer, RGB·IR 인코더 모두 MiT-B2, Stage별 Sum 융합, 입력 480×640
+→ **val mIoU 73.65 / test mIoU 66.13** (Codabench 제출 1061666), params 51.55M
 
-- Fixed settings: seed 0, batch 8, AdamW lr 6e-5, decoder lr ×10, weight decay 0.01, 2-epoch warm-up + poly schedule, 30 epochs, identical augmentation
-- Control: one changed factor per comparison
-- Model selection: val mIoU
-- Metric: mean IoU over 14 classes
+## 1. 한눈에 보기
+
+| 단계 | 질문 (가설) | 비교 | val mIoU | 결론 |
+|---|---|---|---|---|
+| 1 | IR이 도움이 되는가? | RGB 단독 → RGB+IR Sum (B0) | 61.53 → 65.48 | **+3.95**, IR 효과 확인 |
+| 2 | 학습형 융합이 Sum보다 나은가? | Concat / Adaptive (B0) | 62.47 / 65.35 | Sum보다 확실히 나은 구조 없음 |
+| 3 | Concat이 낮은 이유는 초기화인가? | Concat → Concat_res (0 초기화) | 62.47 → 64.95 | **+2.48**, 사전학습 특징 보존이 핵심 |
+| 4 | 합치는 위치가 중요한가? | Early(입력 융합) vs Sum(단계별) | 62.19 vs 65.48 | IR 전용 인코더가 필요 |
+| 5 | 희귀 클래스(Bicycle)를 살릴 수 있나? | Sum → Sum + Oversampling | 65.48 → 67.97 | Bicycle IoU 0 → 43.4, test 55.32 (val 2장 한계) |
+| 6 | 병목이 모델 용량인가? | B0 → B2 (Sum, 384×512) | 65.48 → 72.74 | **+7.26**, 가장 큰 개선 |
+| 7 | 작은 물체가 축소로 사라지나? | 384×512 → 480×640 (B2) | 72.74 → 73.65 | +0.91 (test **+2.23**), **최종 모델** |
+| 8 | 강한 백본에서도 IR이 필요한가? | B2 480 RGB 단독 → Sum | 70.99 → 73.65 | **+2.66**, 어두울수록 효과 ↑ |
+| 9 | 강한 백본에서도 oversampling이 도움이 되나? | B2 480 Sum → Sum + Oversampling | 73.65 → 74.46 | +0.81, 상승분이 Bicycle에 집중 (test −0.49) |
+
+모든 실험은 seed 0, batch 8, AdamW lr 6e-5(디코더 10배), weight decay 0.01, warm-up 2 epoch + poly, 30 epoch, 같은 증강으로 고정하고 **한 번에 한 요소만** 바꿨다. 모델 선택은 val mIoU로만 했다.
 
 ## 2. 전체 실험 결과
 
-| # | Experiment | Backbone | Input | Fusion | Params | Best epoch | Val mIoU | Test mIoU | Logs |
+| # | 실험 | 백본 | 입력 | 융합 | Params | Best epoch | Val mIoU | Test mIoU | 로그 |
 |---|---|---|---|---|---:|---:|---:|---:|---|
 | 1 | RGB 단독 | B0 | 384×512 | — | 3.7M | 29 | 61.53 | | `runs/fmb_rgb` |
 | 2 | Sum | B0 | 384×512 | 단계별 합 | 7.04M | 30 | 65.48 | | `runs/fmb_sum` |
-| 3 | Sum + Oversampling | B0 | 384×512 | 단계별 합 | 7.04M | 29 | 67.97 | | `runs/fmb_sum_oversample10` |
+| 3 | Sum + Oversampling | B0 | 384×512 | 단계별 합 | 7.04M | 29 | 67.97 | 55.32 | `runs/fmb_sum_oversample10` |
 | 4 | Concat | B0 | 384×512 | concat → 1×1 conv | 7.23M | 28 | 62.47 | | `runs/fmb_concat` |
 | 5 | Adaptive | B0 | 384×512 | 채널별 게이트 | 7.23M | 29 | 65.35 | 55.84 | `runs/fmb_adaptive` |
-| 6 | Concat_res | B0 | 384×512 | sum + concat 잔차, 0 초기화 | 7.33M | 27 | 64.95 | | `runs/fmb_concat_res` |
-| 7 | Early | B0 | 384×512 | 입력 단계 합, 인코더 1개 | 3.72M | 30 | 62.19 | | `runs/fmb_early` |
+| 6 | Concat_res | B0 | 384×512 | sum + concat 잔차(0 초기화) | 7.33M | 27 | 64.95 | | `runs/fmb_concat_res` |
+| 7 | Early | B0 | 384×512 | 입력 단계 합(인코더 1개) | 3.72M | 30 | 62.19 | | `runs/fmb_early` |
 | 8 | Sum | B2 | 384×512 | 단계별 합 | 51.55M | 29 | 72.74 | 63.90 | `runs/fmb_b2_sum` |
-| 9 | Sum (최종) | B2 | 480×640 | 단계별 합 | 51.55M | 30 | 73.65 | 66.13 | `runs/fmb_b2_sum_480` |
+| **9** | **Sum (최종)** | **B2** | **480×640** | 단계별 합 | **51.55M** | 30 | **73.65** | **66.13** | `runs/fmb_b2_sum_480` |
 | 10 | RGB 단독 | B2 | 480×640 | — | 27.36M | 30 | 70.99 | | `runs/fmb_b2_rgb_480` |
 | 11 | Sum + Oversampling | B2 | 480×640 | 단계별 합 | 51.55M | 30 | 74.46 | 65.64 | `runs/fmb_b2_sum_480_oversample10` |
-| Ref. | Instructor baseline RGB / Sum | B0 | 384×512 | | | | | 52.77 / 56.30 | |
+| 참고 | 교수 베이스라인 RGB / Sum | B0 | 384×512 | | | | | 52.77 / 56.30 | |
 
-- Best epoch 표기: `log.jsonl`의 epoch + 1
-- 전체 11개 run: 30 epoch 기록 완료
-- #6, #9: Colab 연결 종료 후 동일 명령으로 `last.pth` 재개
-- 학습 곡선과 run 요약: [00_overview](00_overview/README.md)
+- Best epoch는 1부터 센 값이다(`log.jsonl`의 epoch + 1). 11개 run 모두 30 epoch가 빠짐없이 기록되어 있다.
+- #6, #9는 Colab 연결 끊김으로 같은 명령을 다시 실행해 `last.pth`에서 재개했다.
 
 ## 3. 주요 분석
 
-### 3.1 IR 기여 — 사이클 4, B2 480×640, #10 vs #9
+### 3.1 IR 기여 (최종 설정: B2, 480×640)
 
-밝기 그룹: val 220장을 RGB 평균 밝기 기준 73 / 73 / 74장으로 분할.
+밝기 그룹은 val 220장을 RGB 평균 밝기로 3등분했다.
 
 | 밝기 그룹 (0–255) | 이미지 | RGB 단독 | RGB + IR | IR 기여 |
 |---|---:|---:|---:|---:|
-| 어두움 (39–98) | 73 | 61.91 | 66.55 | +4.64 |
+| 어두움 (39–98) | 73 | 61.91 | 66.55 | **+4.64** |
 | 중간 (98–149) | 73 | 73.06 | 75.86 | +2.80 |
 | 밝음 (149–162) | 74 | 73.94 | 74.83 | +0.89 |
 
-- 전체 IR 기여: 70.99 → 73.65, +2.66pp. 어두운 그룹에서 가장 큰 차이.
-- 클래스별: Person +18.79, Bicycle +7.81, Motorcycle +3.04, Pole +2.66, Car +2.27. TrafficSign −0.75, Bus −2.60.
-- 어두운 장면 Person: 42.32 → 65.82, +23.50pp
-- epoch별 IR 기여: ep1 −3.63, ep5 +2.07, ep10 +2.41, ep20 +3.36, ep30 +2.66
-- B0 결과: RGB 61.53 → Sum 65.48, +3.95pp. 동일 방향.
-- Files: [04_ir_contribution](04_ir_contribution/README.md)
+- 어두울수록 IR 기여가 커진다. 파라미터 증가 효과라면 밝기와 무관하게 비슷해야 하므로, 조명이 약할 때 IR이 정보를 보완한다는 가설과 일치한다.
+- 클래스별로는 열을 내는 물체에서 크다: Person **+18.79** (어두운 장면 42.32 → 65.82, +23.50), Bicycle +7.81, Motorcycle +3.04, Pole +2.66, Car +2.27.
+- 무늬로 구분하는 TrafficSign(−0.75)과 Bus(−2.60)는 소폭 하락했다.
 
-### 3.2 융합 위치·구조와 초기화 — 사이클 2, B0
+### 3.2 융합 위치·구조와 초기화 (B0)
 
-- Sum 대비: Adaptive −0.13, Concat_res −0.53, Concat −3.01, Early −3.29. Sum을 넘은 학습형 융합 없음.
-- Early의 RGB 단독 대비 변화: +0.66pp
-- Concat_res − Concat: ep1 +1.46, ep4 +9.74 최대, ep10 +3.14, ep20 +3.41, ep30 +2.56
-- Adaptive − Concat: ep4 +9.30 최대
-- 클래스별 결과: Bicycle 제외 13개 클래스에서 Adaptive가 Concat보다 높은 IoU
-- 해석 범위: 0.5pp 이내 차이의 우열 판단 제외, B0에서만 융합 비교
-- Files: [02_fusion](02_fusion/README.md)
+- Early는 RGB 단독 대비 +0.66에 그쳤다. ImageNet RGB로 사전학습된 인코더 하나로는 IR 고유의 특징을 뽑지 못한다.
+- Concat(랜덤 1×1 conv)은 Sum보다 −3.01 낮았다. 융합 출력이 다음 RGB Stage의 입력이 되므로, 랜덤 초기화가 학습 초반 사전학습 특징을 깨뜨린다고 보았다.
+- 구조는 그대로 두고 처음에 `x + a`가 되도록 0 초기화한 Concat_res는 +2.48 회복했다. Adaptive(게이트 0 초기화)도 Sum과 비슷했다(−0.13).
+- 단일 seed이므로 약 0.5pp 이내 차이(Sum vs Adaptive, Concat_res)는 순위를 단정하지 않았다.
 
-### 3.3 백본과 해상도 — 사이클 3, #2 → #8 → #9
+### 3.3 백본과 해상도
 
-- B0 → B2: +7.26pp, 전체 실험 중 최대. 14개 클래스 전체 상승. Bicycle +39.83, TrafficLight +10.2, Motorcycle +9.4, Sky와 Road +1.5pp 이하.
-- 384×512 → 480×640: val +0.91pp, test +2.23pp. Bicycle +6.77, Pole +3.43, Person +2.02, TrafficLight +1.32, Bus −3.33.
-- 입력 축소율: 384×512는 원본의 0.64배, 480×640은 0.8배
-- 공통 조건: 3:4 비율, 32의 배수, Colab T4, batch 8
-- Bus 변화: 용량 확대 +7.65, IR 추가 −2.60, 해상도 상승 −3.33. [design_notes.md](design_notes.md#3-bus-cross-cycle-pattern-cycles-3-and-4)
-- Files: [03_capacity](03_capacity/README.md)
+- B0 → B2: 14개 클래스 모두 상승. Bicycle 0 → 39.83(oversampling 없이), TrafficLight +10.2, Motorcycle +9.4, 큰 클래스(Sky, Road)는 +1.5 이하. B0의 한계는 데이터 부족뿐 아니라 모델 용량이었다.
+- 384×512 → 480×640: 작은 물체가 주로 올랐다 (Bicycle +6.77, Pole +3.43, Person +2.02, TrafficLight +1.32). Bus는 −3.33.
+- 입력 384×512는 원본 600×800의 0.64배(베이스라인 기본값, Colab T4 비용 고려), 480×640은 0.8배다. 둘 다 3:4 비율과 32의 배수를 유지한다. 모든 실험이 batch 8로 메모리 문제 없이 돌았다.
 
-### 3.4 Oversampling — 사이클 1-B와 5
+### 3.4 실패 사례 (최종 모델)
 
-- B0, #2 → #3: Bicycle IoU 0 → 43.40, 전체 65.48 → 67.97. Bicycle 포함 val 2장.
-- B2 480×640, #9 → #11: val 73.65 → 74.46, +0.81pp. test 66.13 → 65.64, −0.49pp.
-- val 상승 분해: Bicycle +1.14pp, 나머지 13개 클래스 합계 −0.33pp
-- Bicycle 변화: +15.98pp. 하락 클래스 8개. TrafficSign −2.10, Motorcycle −1.69, Truck −1.38 등.
-- Bicycle 제외 13개 클래스 mIoU: 75.73 → 75.37, −0.36pp. test와 같은 방향.
-- val−test 격차: 7.52 → 8.82pp
-- Files: [01_baseline](01_baseline/README.md), [05_oversampling_final](05_oversampling_final/README.md) ([classiou_sum_vs_oversample.csv](05_oversampling_final/classiou_sum_vs_oversample.csv))
+픽셀 정확도가 가장 낮은 val 4장은 384×512 모델과 같았고, 오류는 대부분 노면 재질 혼동이었다.
 
-### 3.5 실패 사례와 TTA — 최종 모델
+| 이미지 | 장면 | 픽셀 정확도 | 주된 오류 (정답 → 예측) | 오류 중 비율 |
+|---|---|---:|---|---:|
+| 00108 | 비에 젖은 광장, 주간 | 58.9% | Sidewalk → Road | 93.0% |
+| 00107 | 비에 젖은 광장, 주간 | 59.1% | Sidewalk → Road | 94.7% |
+| 00136 | 야간, 가로등 | 67.9% | Road → Sidewalk | 72.6% |
+| 00394 | 야간, 전조등 눈부심 | 73.6% | Vegetation → Road | 78.9% |
 
-- 최저 픽셀 정확도 val 4장: 00108, 00107, 00136, 00394. 384×512 모델과 동일.
-- 주요 오류: Sidewalk ↔ Road, Vegetation → Road 등 노면 재질 혼동
-- 좌우 반전 TTA: val 73.65 → 73.63. 제출 미사용.
-- Figures and tables: [06_final_model](06_final_model/README.md)
+젖은 노면 반사와 야간 조명으로 RGB가 흔들리고, IR에서는 온도가 비슷한 보도·차도·잔디가 하나의 면으로 보인다. 센서 융합과 모델 확장으로도 풀리지 않은 오류다.
+
+### 3.5 TTA
+
+최종 모델에 좌우 반전 TTA를 val로 비교했다: 73.65 → 73.63. 효과가 없어 제출에 쓰지 않았다.
+
+### 3.6 Oversampling (B0 #2 → #3, B2 #9 → #11)
+
+Bicycle(클래스 12)이 들어 있는 train 이미지 10장을 `WeightedRandomSampler`로 한 epoch의 약 10%가 되도록 더 자주 뽑았다(가중치 11). 모델과 손실은 바꾸지 않았다.
+
+| 클래스 | B2 Sum (#9) | B2 Sum + OS (#11) | 차이 |
+|---|---:|---:|---:|
+| Bicycle | 46.60 | 62.59 | **+15.98** |
+| Sidewalk / Bus / Road | 57.04 / 73.72 / 90.29 | 57.61 / 74.25 / 90.70 | +0.57 / +0.53 / +0.40 |
+| Person | 67.16 | 66.58 | −0.58 |
+| Truck | 65.58 | 64.20 | −1.38 |
+| Motorcycle | 64.15 | 62.46 | −1.69 |
+| TrafficSign | 76.24 | 74.15 | −2.10 |
+| **mIoU (val / test)** | 73.65 / 66.13 | 74.46 / 65.64 | +0.81 / −0.49 |
+
+- B2: val 상승 +0.81 중 Bicycle의 mIoU 기여가 +1.14, 나머지 13개 클래스 기여는 −0.33이다. Bicycle을 뺀 13개 클래스 mIoU는 val에서 75.73 → 75.37(−0.36)로 내려갔다. Bicycle 외 8개 클래스가 하락했다.
+- B0: val은 65.48 → 67.97(+2.49, Bicycle 0 → 43.40)로 올랐지만, test는 55.32였다. B0 Sum은 직접 제출하지 않았고, 같은 설정의 교수 베이스라인 Sum test는 56.30이다(val 65.40, 우리 재현 65.48).
+- Bicycle이 들어 있는 val 이미지는 2장(994픽셀)뿐이라 Bicycle IoU의 변동이 크다. 두 백본 모두 val 상승이 이 한 클래스에서 나왔고 test로 이어지지 않았다.
+- 결론: oversampling은 희귀 클래스(Bicycle)를 살리는 데는 효과가 있었지만, 전체 성능 개선은 확인되지 않았다.
 
 ## 4. 리더보드 제출
 
-| Submission ID | Model | Val mIoU | Test mIoU | Pixel Acc |
+| 제출 ID | 모델 | Val mIoU | Test mIoU | Pixel Acc |
 |---|---|---:|---:|---:|
-| 1061666 | #9 B2 Sum 480×640, 최종 | 73.65 | 66.13 | 93.38 |
-| 1060429 | #8 B2 Sum 384×512 | 72.74 | 63.90 | |
-| 1058499 | #5 B0 Adaptive | 65.35 | 55.84 | 91.95 |
-| 1062714 | #11 B2 Sum 480×640 + Oversampling | 74.46 | 65.64 | |
+| 1061666 | B2 Sum 480×640 (#9, 최종) | 73.65 | **66.13** | 93.38 |
+| 1060429 | B2 Sum 384×512 (#8) | 72.74 | 63.90 | |
+| 1058499 | B0 Adaptive (#5) | 65.35 | 55.84 | 91.95 |
+| 1062714 | B2 Sum 480×640 + Oversampling (#11) | 74.46 | 65.64 | |
+| 1063126 | B0 Sum + Oversampling (#3) | 67.97 | 55.32 | |
 
-- 제출 전 점검: #5, #8, #9, #11 모두 `check_submission.py` 통과
-- 점검 항목: PNG 280장, 원본 크기, 클래스 0–13, 누락 0
-- 모델 선택 기준: val mIoU만 사용, test 점수 기반 조정 없음
-- 제출 선택 근거: [설계 문서](../docs/experiment_design.md#리더보드-제출)
+모든 제출은 `check_submission.py`로 점검했다(280장, 원본 크기, 클래스 0–13, 누락 0). 모델과 설정은 val mIoU로만 골랐고 test 점수에 맞춘 조정은 없다. #9는 #11 학습 전에 val 기준으로 선택해 제출했고, #11과 #3은 이후의 추가 실험으로 기록을 위해 제출했다. #11은 val이 더 높지만 상승분이 val 2장뿐인 Bicycle에서만 나왔고 Bicycle 제외 13개 클래스는 val에서도 하락해(3.6절) 최종 모델을 바꾸지 않았다.
 
 ## 5. 재현 방법
 
@@ -118,46 +132,26 @@ python predict.py --data_root data/FMB_prepared --ckpt runs/fmb_b2_sum_480/best.
 python check_submission.py --zip submission_b2_sum_480.zip --data_root data/FMB_prepared
 ```
 
-`check_submission.py`는 교수가 공유 폴더(26-2 project)에 올린 점검 스크립트다.
-
-| Experiment | CLI option |
+| 실험 | 실행 옵션 |
 |---|---|
 | RGB 단독 / Early | `--fusion rgb` / `--fusion early` |
-| Concat / Adaptive / Concat_res | `--fusion concat` / `adaptive` / `concat_res` ([`fusion_seg/fusion.py`](../fusion_seg/fusion.py)) |
+| Concat / Adaptive / Concat_res | `--fusion concat` / `adaptive` / `concat_res` ([`fusion_seg/fusion.py`](fusion_seg/fusion.py)) |
 | Oversampling | `python train_oversample.py ... --target_fraction 0.10` |
 | MiT-B2 | `--backbone nvidia/mit-b2` |
 | 480×640 | `--height 480 --width 640` |
 
 - 각 run의 설정과 epoch별 로그: `runs/<이름>/args.json`, `runs/<이름>/log.jsonl`. `best.pth` / `last.pth`는 용량 때문에 팀 Google Drive(`ICV_FMB/runs/`)에 보관하며 요청 시 제출한다.
-- 로그에서 표와 그림을 다시 만들려면 `python tools/analyze_runs.py` ([results/README.md](README.md#재생성)).
-- 실험 노트북: [`notebooks/trackA_FMB_results.ipynb`](../notebooks/trackA_FMB_results.ipynb) (B0 융합 비교는 [`trackA_FMB_fusion.ipynb`](../notebooks/trackA_FMB_fusion.ipynb), B0 RGB/Sum/Oversampling은 [`trackA_FMB_baseline.ipynb`](../notebooks/trackA_FMB_baseline.ipynb)).
 - 데이터: 저자 Google Drive 다운로드 쿼터 초과로, 원본 `train.zip` / `test.zip`을 팀 Drive에 두고 Colab에서 압축 해제 후 `prepare_fmb.py`로 준비했다. 분할(train 1,000 / val 220 / test 280)은 원본 스크립트 결과와 파일 목록이 동일함을 확인했다. test 라벨은 읽지 않았다.
-- 환경: Google Colab, Tesla T4 1장, `transformers==4.46.3` (`requirements.txt`).
+- 환경: Google Colab, Tesla T4 1장. B0 RGB·Sum·Sum+OS(#1–#3)는 `transformers==4.46.3`, 나머지 run(#4–#11)은 Colab 기본 버전에서 학습했다. 체크포인트는 학습한 버전에서만 불러올 수 있으므로, #3 예측은 `pip install transformers==4.46.3` 후 실행했다.
 
 ## 6. 규칙 준수
 
 - 학습·튜닝·모델 선택은 `index_train.json` / `index_val.json`만 사용, test는 최종 예측에만 사용.
 - 사전학습은 ImageNet MiT(`nvidia/mit-b0`, `nvidia/mit-b2`)만 사용, 외부 데이터 없음.
 - 최종 모델: 두 인코더 모두 MiT-B2, 총 51.55M (약 52M 이하).
-- 리더보드는 팀 계정 하나(`reduce_l`)로만 제출했다.
-- 측정 한계(단일 seed, IR 기여의 파라미터 교란, 밝기 그룹의 의미 등)는 [설계 문서](../docs/experiment_design.md#측정-한계)에 모았다.
+- 한계: 모든 결과가 단일 seed. Sum의 IR 기여에는 인코더 2개에 따른 파라미터 증가가 섞여 있을 수 있다(밝기·클래스별 분석이 IR 정보 효과를 뒷받침). 밝기 그룹은 날씨 라벨이 아니다.
 
-## 7. 폴더 구성
-
-| Path | Description |
-|---|---|
-| [`../docs/experiment_design.md`](../docs/experiment_design.md) | 실험 순서, 선택 이유, 비교 기준, 결과 해석 |
-| [`../fusion_seg/fusion.py`](../fusion_seg/fusion.py) | 융합 모듈: `sum`, `concat`, `adaptive`, `concat_res` (각 클래스에 출처 주석) |
-| `../fusion_seg/model.py`, `data.py`, `metrics.py` | 제공 코드 |
-| `../train.py`, `../predict.py` | 제공 코드 |
-| [`../train_oversample.py`](../train_oversample.py) | Bicycle(12) oversampling 학습 (`WeightedRandomSampler`) |
-| [`../tools/analyze_runs.py`](../tools/analyze_runs.py) | 로그에서 표·그림 재생성 |
-| `../runs/` | 실험별 `args.json`, `log.jsonl` |
-| [`design_notes.md`](design_notes.md) | 학습 로그 기반 검증 분석 |
-| `00_overview` ~ `06_final_model` | 사이클별 결과 ([폴더 지도](README.md)) |
-| `../notebooks/` | 실행 노트북 |
-
-## 8. 출처
+## 7. 출처
 
 - FMB: J. Liu et al., "Multi-interactive Feature Learning and a Full-time Multi-modality Benchmark for Image Fusion and Segmentation," ICCV 2023. https://github.com/JinyuanLiu-CV/SegMiF
 - SegFormer / MiT: E. Xie et al., "SegFormer: Simple and Efficient Design for Semantic Segmentation with Transformers," NeurIPS 2021. Hugging Face `nvidia/mit-b0`, `nvidia/mit-b2`.
