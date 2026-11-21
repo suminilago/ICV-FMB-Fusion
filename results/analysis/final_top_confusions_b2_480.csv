@@ -1,0 +1,7 @@
+class,IoU,오답1,오답2,오답3
+12 Bicycle,46.6,Sky 15.5%,Sidewalk 14.7%,Road 9.3%
+1 Sidewalk,57.04,Road 26.6%,Vegetation 3.8%,Car 1.0%
+13 Pole,60.72,Vegetation 12.6%,Building 8.5%,Sky 5.8%
+3 TrafficLight,63.1,Vegetation 10.4%,Building 8.5%,Pole 2.5%
+11 Motorcycle,64.15,Car 14.0%,Person 5.2%,Bus 4.5%
+9 Truck,65.58,Car 7.6%,Building 5.9%,Vegetation 5.4%

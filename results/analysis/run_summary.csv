@@ -1,0 +1,11 @@
+실험,fusion,backbone,input,epochs,seed,target_fraction,best val mIoU,best epoch (1부터),기록된 epoch 수,best.pth
+B0 RGB,rgb,mit-b0,384x512,30,0,-,61.53,29,30,True
+B0 Sum,sum,mit-b0,384x512,30,0,-,65.48,30,30,True
+B0 Sum+OS,sum,mit-b0,384x512,30,0,0.1,67.97,29,30,True
+B0 Concat,concat,mit-b0,384x512,30,0,-,62.47,28,30,True
+B0 Adaptive,adaptive,mit-b0,384x512,30,0,-,65.35,29,30,True
+B0 Concat_res,concat_res,mit-b0,384x512,30,0,-,64.95,27,30,True
+B0 Early,early,mit-b0,384x512,30,0,-,62.19,30,30,True
+B2 Sum 384,sum,mit-b2,384x512,30,0,-,72.74,29,30,True
+B2 Sum 480,sum,mit-b2,480x640,30,0,-,73.65,30,30,True
+B2 RGB 480,rgb,mit-b2,480x640,30,0,-,70.99,30,30,True

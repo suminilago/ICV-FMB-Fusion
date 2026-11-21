@@ -1,0 +1,5 @@
+image,pixel acc (%),top error,share of errors (%)
+00108.png,58.9,Sidewalk -> Road,93.0
+00107.png,59.1,Sidewalk -> Road,94.7
+00136.png,67.9,Road -> Sidewalk,72.6
+00394.png,73.6,Vegetation -> Road,78.9
