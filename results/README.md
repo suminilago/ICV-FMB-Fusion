@@ -64,6 +64,6 @@ python tools/analyze_runs.py --out /tmp/x # 레포를 건드리지 않고 확인
 
 만드는 파일: `run_summary.csv`, `run_convergence.csv`, `curve_all_runs.png`, 모든 `run_gap_*.csv`와 `curve_gap_*.png`.
 로그가 있는 run 쌍만 만들고, 로그가 없는 run은 건너뛴다고 출력한다.
-나머지 `classiou_`, `confusion_`, `failure_`, `miou_`, `dist_`, `qualitative_` 파일은 체크포인트로 val을 예측해서 만든 것이라 로그만으로는 다시 만들 수 없다. `02_fusion` ~ `06_final_model`의 파일을 만든 셀은 [notebooks/trackA_FMB_test.ipynb](../notebooks/trackA_FMB_test.ipynb)의 "3. 분석" 절에 있다.
+나머지 `classiou_`, `confusion_`, `failure_`, `miou_`, `dist_`, `qualitative_` 파일은 체크포인트로 val을 예측해서 만든 것이라 로그만으로는 다시 만들 수 없다. `02_fusion` ~ `06_final_model`의 파일을 만든 셀은 [notebooks/trackA_FMB_results.ipynb](../notebooks/trackA_FMB_results.ipynb)의 "3. 분석" 절에 있다.
 
 클래스 번호는 FMB 순서다: 0 Road, 1 Sidewalk, 2 Building, 3 TrafficLight, 4 TrafficSign, 5 Vegetation, 6 Sky, 7 Person, 8 Car, 9 Truck, 10 Bus, 11 Motorcycle, 12 Bicycle, 13 Pole. 클래스 IoU 단위는 %다.

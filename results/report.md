@@ -121,7 +121,7 @@ python check_submission.py --zip submission_b2_sum_480.zip --data_root data/FMB_
 
 - 각 run의 설정과 epoch별 로그: `runs/<이름>/args.json`, `runs/<이름>/log.jsonl`. `best.pth` / `last.pth`는 용량 때문에 팀 Google Drive(`ICV_FMB/runs/`)에 보관하며 요청 시 제출한다.
 - 로그에서 표와 그림을 다시 만들려면 `python tools/analyze_runs.py` ([results/README.md](README.md#재생성)).
-- 실험 노트북: [`notebooks/trackA_FMB_test.ipynb`](../notebooks/trackA_FMB_test.ipynb) (B0 융합 비교는 [`trackA_FMB_fusion.ipynb`](../notebooks/trackA_FMB_fusion.ipynb), B0 RGB/Sum/Oversampling은 [`trackA_FMB_baseline.ipynb`](../notebooks/trackA_FMB_baseline.ipynb)).
+- 실험 노트북: [`notebooks/trackA_FMB_results.ipynb`](../notebooks/trackA_FMB_results.ipynb) (B0 융합 비교는 [`trackA_FMB_fusion.ipynb`](../notebooks/trackA_FMB_fusion.ipynb), B0 RGB/Sum/Oversampling은 [`trackA_FMB_baseline.ipynb`](../notebooks/trackA_FMB_baseline.ipynb)).
 - 데이터: 저자 Google Drive 다운로드 쿼터 초과로, 원본 `train.zip` / `test.zip`을 팀 Drive에 두고 Colab에서 압축 해제 후 `prepare_fmb.py`로 준비했다. 분할(train 1,000 / val 220 / test 280)은 원본 스크립트 결과와 파일 목록이 동일함을 확인했다. test 라벨은 읽지 않았다.
 - 환경: Google Colab, Tesla T4 1장, `transformers==4.46.3` (`requirements.txt`).
 
