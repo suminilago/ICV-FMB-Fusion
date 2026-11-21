@@ -45,9 +45,9 @@
 | 폴더 | 파일 |
 |---|---|
 | 00_overview | `run_summary.csv`, `run_convergence.csv`, `curve_all_runs.png` |
-| 01_baseline | `classiou_rgb_vs_sum.csv`, `classiou_rgb_vs_sum.png`, `confusion_rgb_vs_sum.png`, `confusion_class7_12_rgb_vs_sum.csv`, `curve_rgb_vs_sum.png`, `dist_train_class.csv`, `dist_class12_val_images.csv`, `qualitative_class12_gt.png`, `qualitative_class12_rgb_vs_sum.png` |
+| 01_baseline | `classiou_rgb_vs_sum.csv`, `classiou_rgb_vs_sum.png`, `confusion_rgb_vs_sum.png`, `confusion_class7_12_rgb_vs_sum.csv`, `curve_rgb_vs_sum.png`, `run_gap_sum_vs_rgb.csv`, `curve_gap_sum_vs_rgb.png`, `run_gap_sum_oversample10_vs_sum.csv`, `curve_gap_sum_oversample10_vs_sum.png`, `dist_train_class.csv`, `dist_class12_val_images.csv`, `qualitative_class12_gt.png`, `qualitative_class12_rgb_vs_sum.png` |
 | 02_fusion | `classiou_concat_vs_adaptive.csv`, `curve_concat_vs_adaptive.png`, `run_gap_concat_res_vs_concat.csv`, `curve_gap_concat_res_vs_concat.png`, `run_gap_adaptive_vs_concat.csv`, `curve_gap_adaptive_vs_concat.png` |
-| 03_capacity | `classiou_b0_vs_b2.csv`, `classiou_384_vs_480.csv`, `run_gap_b2_sum_480_vs_b2_sum.csv`, `curve_gap_b2_sum_480_vs_b2_sum.png` |
+| 03_capacity | `classiou_b0_vs_b2.csv`, `classiou_384_vs_480.csv`, `run_gap_b2_sum_vs_sum.csv`, `curve_gap_b2_sum_vs_sum.png`, `run_gap_b2_sum_480_vs_b2_sum.csv`, `curve_gap_b2_sum_480_vs_b2_sum.png` |
 | 04_ir_contribution | `classiou_rgb_vs_sum.csv`, `classiou_dark_rgb_vs_sum.csv`, `miou_brightness_rgb_vs_sum.csv`, `classiou_ir_gain_brightness.png`, `qualitative_dark_rgb_vs_sum.png`, `run_gap_b2_sum_480_vs_b2_rgb_480.csv`, `curve_gap_b2_sum_480_vs_b2_rgb_480.png` |
 | 05_oversampling_final | `classiou_sum_vs_oversample.csv`, `run_gap_b2_sum_480_oversample10_vs_b2_sum_480.csv`, `curve_gap_b2_sum_480_oversample10_vs_b2_sum_480.png` |
 | 06_final_model | `confusion_final.png`, `confusion_final_top.csv`, `failure_final.csv`, `failure_final.png`, `miou_tta.csv` |

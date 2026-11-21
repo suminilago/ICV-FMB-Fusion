@@ -5,10 +5,13 @@
 
 ## 1. 수렴 (전 사이클)
 
-고정한 30 epoch가 수렴점인지 본다. 로그가 있는 7개 run 기준이다. [run_convergence.csv](00_overview/run_convergence.csv)
+고정한 30 epoch가 수렴점인지 본다. 11개 run 전체 기준이다. [run_convergence.csv](00_overview/run_convergence.csv)
 
 | run | best epoch | epoch 20 | 마지막 epoch | 상승폭 |
 |---|---:|---:|---:|---:|
+| `fmb_rgb` | 29 | 59.93 | 61.47 | +1.54 |
+| `fmb_sum` | 30 | 64.19 | 65.48 | +1.29 |
+| `fmb_sum_oversample10` | 29 | 66.10 | 67.91 | +1.81 |
 | `fmb_concat` | 28 | 60.24 | 62.33 | +2.09 |
 | `fmb_adaptive` | 29 | 63.22 | 65.30 | +2.08 |
 | `fmb_concat_res` | 27 | 63.65 | 64.89 | +1.24 |
@@ -16,9 +19,10 @@
 | `fmb_b2_sum` | 29 | 68.51 | 72.38 | +3.87 |
 | `fmb_b2_sum_480` | 30 | 70.69 | 73.65 | +2.95 |
 | `fmb_b2_rgb_480` | 30 | 67.33 | 70.99 | +3.66 |
+| `fmb_b2_sum_480_oversample10` | 30 | 72.72 | 74.46 | +1.74 |
 
-- 7개 run 모두 epoch 20에서 마지막까지 +1.2pp 이상 올랐다 (최소 `fmb_concat_res` +1.24).
-- best epoch는 27~30에 몰려 있고, `fmb_early`, `fmb_b2_sum_480`, `fmb_b2_rgb_480`은 마지막 epoch가 best다.
+- 11개 run 모두 epoch 20에서 마지막까지 +1.2pp 이상 올랐다 (최소 `fmb_concat_res` +1.24).
+- best epoch는 27~30에 몰려 있고, `fmb_sum`, `fmb_early`, `fmb_b2_sum_480`, `fmb_b2_rgb_480`, `fmb_b2_sum_480_oversample10`은 마지막 epoch가 best다.
 
 ## 2. 학습 초반 격차 (사이클 2, 가설 2-B)
 

@@ -43,7 +43,10 @@ run 설정과 epoch별 로그: [`runs/fmb_b2_sum/`](../../runs/fmb_b2_sum/), [`r
 
 - B0 → B2 ([classiou_b0_vs_b2.csv](classiou_b0_vs_b2.csv)): 14개 클래스가 모두 올랐다. Bicycle +39.83, TrafficLight +10.21, Motorcycle +9.35, Bus +7.65이고 Sky +0.45, Road +1.31이다.
 - 384×512 → 480×640 ([classiou_384_vs_480.csv](classiou_384_vs_480.csv)): Bicycle +6.77, Pole +3.43, Person +2.02, TrafficLight +1.32가 오르고 Bus −3.33, Truck −0.27이 내렸다. Road, Sky, Building은 ±0.2 이내다.
+- B0 Sum 대비 B2 Sum(384×512)의 epoch별 격차는 ep1 +11.50, ep2 +14.89(최대), ep10 +7.24, ep20 +4.32, ep30 +6.90이고, 30 epoch 내내 양수다(최소 ep23의 +3.82). [run_gap_b2_sum_vs_sum.csv](run_gap_b2_sum_vs_sum.csv)
 - epoch별로 본 480×640 − 384×512 격차는 [run_gap_b2_sum_480_vs_b2_sum.csv](run_gap_b2_sum_480_vs_b2_sum.csv)에 있다 (ep24 +2.75, 마지막 +1.27, ep1, 2, 6에서는 음수다).
+
+![B2 Sum 384×512와 B0 Sum의 val mIoU와 epoch별 격차](curve_gap_b2_sum_vs_sum.png)
 
 ![B2 480×640과 384×512의 val mIoU와 epoch별 격차](curve_gap_b2_sum_480_vs_b2_sum.png)
 
@@ -53,4 +56,5 @@ run 설정과 epoch별 로그: [`runs/fmb_b2_sum/`](../../runs/fmb_b2_sum/), [`r
 |---|---|
 | `classiou_b0_vs_b2.csv` | B0 RGB / Sum / Concat / Adaptive와 B2 Sum 384×512의 클래스별 IoU, B2 − B0 Sum 차이 |
 | `classiou_384_vs_480.csv` | B2 Sum의 384×512와 480×640 클래스별 IoU, 차이 (`480_minus_384`). 480×640이 최종 모델 |
+| `run_gap_b2_sum_vs_sum.csv`, `curve_gap_b2_sum_vs_sum.png` | B2 Sum 384×512 − B0 Sum의 epoch별 격차 |
 | `run_gap_b2_sum_480_vs_b2_sum.csv`, `curve_gap_b2_sum_480_vs_b2_sum.png` | 480×640 − 384×512의 epoch별 격차 |

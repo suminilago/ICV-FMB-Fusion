@@ -32,6 +32,16 @@ RGB 단독 → Sum은 +3.95pp, Sum → Oversampling은 +2.49pp다.
 
 ![RGB 단독과 Sum의 val mIoU 곡선](curve_rgb_vs_sum.png)
 
+epoch별 val mIoU 격차(Sum − RGB 단독)는 ep1 +0.79, ep2 −4.55, ep10 +2.55, ep20 +4.26, ep30 +4.02이고, ep2, 3, 6을 뺀 27개 epoch에서 양수다. 최대는 ep24의 +4.35다.
+[run_gap_sum_vs_rgb.csv](run_gap_sum_vs_rgb.csv)
+
+Oversampling − Sum은 ep1 −0.26, ep10 +0.25, ep20 +1.91, ep30 +2.43이고, 24개 epoch에서 양수다(음수는 ep1, 2, 3, 8, 9, 11). 최대는 ep21의 +3.08이다.
+[run_gap_sum_oversample10_vs_sum.csv](run_gap_sum_oversample10_vs_sum.csv)
+
+![Sum − RGB 단독의 epoch별 격차](curve_gap_sum_vs_rgb.png)
+
+![Oversampling − Sum의 epoch별 격차](curve_gap_sum_oversample10_vs_sum.png)
+
 ## 1-A. RGB 단독 vs Sum (클래스별)
 
 [classiou_rgb_vs_sum.csv](classiou_rgb_vs_sum.csv), [classiou_rgb_vs_sum.png](classiou_rgb_vs_sum.png)
@@ -97,3 +107,5 @@ python predict.py \
 | `qualitative_class12_gt.png` | Bicycle 정답 시각화 |
 | `qualitative_class12_rgb_vs_sum.png` | Bicycle 예측 비교 |
 | `curve_rgb_vs_sum.png` | RGB 단독과 Sum의 val mIoU 곡선 |
+| `run_gap_sum_vs_rgb.csv`, `curve_gap_sum_vs_rgb.png` | Sum − RGB 단독의 epoch별 val mIoU와 격차 |
+| `run_gap_sum_oversample10_vs_sum.csv`, `curve_gap_sum_oversample10_vs_sum.png` | Oversampling − Sum의 epoch별 val mIoU와 격차 |

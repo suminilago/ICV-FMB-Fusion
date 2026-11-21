@@ -1,11 +1,12 @@
-실험,fusion,backbone,input,epochs,seed,target_fraction,best val mIoU,best epoch (1부터),기록된 epoch 수,best.pth
-B0 RGB,rgb,mit-b0,384x512,30,0,-,61.53,29,30,True
-B0 Sum,sum,mit-b0,384x512,30,0,-,65.48,30,30,True
-B0 Sum+OS,sum,mit-b0,384x512,30,0,0.1,67.97,29,30,True
-B0 Concat,concat,mit-b0,384x512,30,0,-,62.47,28,30,True
-B0 Adaptive,adaptive,mit-b0,384x512,30,0,-,65.35,29,30,True
-B0 Concat_res,concat_res,mit-b0,384x512,30,0,-,64.95,27,30,True
-B0 Early,early,mit-b0,384x512,30,0,-,62.19,30,30,True
-B2 Sum 384,sum,mit-b2,384x512,30,0,-,72.74,29,30,True
-B2 Sum 480,sum,mit-b2,480x640,30,0,-,73.65,30,30,True
-B2 RGB 480,rgb,mit-b2,480x640,30,0,-,70.99,30,30,True
+run,fusion,backbone,height,width,epochs,seed,target_fraction,best_val_mIoU,best_epoch,logged_epochs,final_val_mIoU
+fmb_adaptive,adaptive,mit-b0,384,512,30,0,,65.35,29,30,65.3
+fmb_b2_rgb_480,rgb,mit-b2,480,640,30,0,,70.99,30,30,70.99
+fmb_b2_sum,sum,mit-b2,384,512,30,0,,72.74,29,30,72.38
+fmb_b2_sum_480,sum,mit-b2,480,640,30,0,,73.65,30,30,73.65
+fmb_b2_sum_480_oversample10,sum,mit-b2,480,640,30,0,0.1,74.46,30,30,74.46
+fmb_concat,concat,mit-b0,384,512,30,0,,62.47,28,30,62.33
+fmb_concat_res,concat_res,mit-b0,384,512,30,0,,64.95,27,30,64.89
+fmb_early,early,mit-b0,384,512,30,0,,62.19,30,30,62.19
+fmb_rgb,rgb,mit-b0,384,512,30,0,,61.53,29,30,61.47
+fmb_sum,sum,mit-b0,384,512,30,0,,65.48,30,30,65.48
+fmb_sum_oversample10,sum,mit-b0,384,512,30,0,0.1,67.97,29,30,67.91
