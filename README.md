@@ -1,35 +1,34 @@
-# ICV 기말 프로젝트 트랙 A: FMB RGB·IR 융합 세그멘테이션 (팀 작업)
+# ICV Final Project — Track A: FMB RGB–IR Fusion Segmentation
 
-**최종 모델**: SegFormer, RGB·IR 인코더 모두 MiT-B2, Stage별 Sum 융합, 입력 480×640, 51.55M
-→ **val mIoU 73.65 / test mIoU 66.13** (Codabench 제출 1061666, 팀 계정 `reduce_l`). 교수 베이스라인은 test 52.77 (RGB) / 56.30 (Sum)이다.
+- Final setup: RGB·IR MiT-B2 encoders, stage-wise Sum fusion, 480×640 input, 51.55M parameters
+- Final performance: val mIoU 73.65 / test mIoU 66.13, Codabench submission 1061666
+- Instructor baseline: RGB 52.77 / Sum 56.30 on test
+- IR contribution: +3.95pp at B0 384×512, +2.66pp at B2 480×640, +4.64pp on the dark val group
 
-RGB 단독 대비 IR 기여는 B0(384×512)에서 val +3.95, 최종 설정(B2, 480×640)에서 +2.66이고 어두운 장면에서 +4.64로 가장 크다.
+## Experiment Flow
 
-## 프로젝트 흐름
+- Workflow: baseline reproduction → result analysis → next experiment
+- Control: one changed factor per comparison
+- Runs: 11 total / 4 leaderboard submissions
 
-베이스라인과 데이터를 먼저 관찰하고, 그 관찰을 근거로 가설을 세워 한 번에 한 요소만 바꿔 실험했다.
-결과 분석이 다음 가설의 근거가 되는 이 과정을 다섯 번 돌았고, 실험 11개 중 4개를 리더보드에 제출했다.
-
-| 사이클 | 확인한 가설 | 판정 | 결과로 정해진 것 |
+| Stage | Comparison | Result | Decision |
 |---|---|---|---|
-| [1. 기준선과 희귀 클래스](results/01_baseline/README.md) | IR은 RGB를 보완한다 / Bicycle은 노출을 늘리면 학습된다 | 지지 / 지지 | 클래스별 IR 기여 편차가 사이클 2의 근거, B0 oversampling의 test 미검증이 사이클 5의 근거 |
-| [2. 융합 구조와 초기화](results/02_fusion/README.md) | 학습형 융합이 Sum보다 낫다 / Concat이 낮은 원인은 초기화다 / 입력 단계 융합으로 충분하다 | **기각** / 지지 / **기각** | 융합은 Sum으로 고정, IR 전용 인코더를 둔 두 인코더 구조 유지 |
-| [3. 백본 확대와 해상도](results/03_capacity/README.md) | 병목은 모델 용량이다 / 입력 축소가 작은 물체를 지운다 | 지지 / 지지 | B2, 480×640, Sum을 최종 모델(#9)로 확정 |
-| [4. 최종 설정에서 IR 기여](results/04_ir_contribution/README.md) | 최종 설정에서도 IR이 기여하고 어두울수록 크다 | 지지 | 최종 모델 구조 유지 |
-| [5. 최종 설정 샘플링](results/05_oversampling_final/README.md) | oversampling이 최종 설정에서 val과 test를 함께 올린다 | **기각** | val +0.81, test −0.49로 갈려 #9 유지 |
+| [1. Baseline and Rare Class](results/01_baseline/README.md) | RGB-only vs Sum, Bicycle oversampling | IR 추가와 oversampling 모두 val 상승 | 융합 방식과 희귀 클래스 문제를 따로 확인 |
+| [2. Fusion Architecture and Initialization](results/02_fusion/README.md) | Sum, Concat, Adaptive, Concat_res, Early | 학습형 융합이 Sum을 넘지 못함 | 이후 실험은 dual encoders + Sum으로 고정 |
+| [3. Backbone Scaling and Resolution](results/03_capacity/README.md) | B0→B2, 384×512→480×640 | 각각 val +7.26pp, +0.91pp | B2, 480×640, Sum을 submission candidate로 선택 |
+| [4. IR Contribution at Final Setup](results/04_ir_contribution/README.md) | B2 RGB-only vs RGB+IR | 전체 +2.66pp, dark group +4.64pp | RGB+IR 구조 유지 |
+| [5. Sampling at Final Setup](results/05_oversampling_final/README.md) | B2 Sum vs B2 Sum+oversampling | val +0.81pp, test −0.49pp | oversampling 없는 #9를 final model로 선택 |
 
-기각이 세 건이고, 각각 최종 모델의 구성을 정했다. 가설마다 근거와 검증 지표는 설계 문서에 있다.
+## Documents
 
-## 읽는 순서
+1. [docs/experiment_design.md](docs/experiment_design.md): 각 실험을 선택한 이유, 비교 기준, 결과 해석, 측정 한계
+2. [results/report.md](results/report.md): 11개 실험 결과, 리더보드 점수, 재현 방법
+3. [results/README.md](results/README.md): 결과 파일 위치와 이름 규칙
+4. [results/design_notes.md](results/design_notes.md): 학습 로그에서 추가로 확인한 내용
 
-1. [docs/experiment_design.md](docs/experiment_design.md): 설계와 가설 검증. 가설의 근거, 검증 지표, 판정, 제출 선택, 측정 한계
-2. [results/report.md](results/report.md): 최종 보고서. 11개 실험 표, 주요 분석, 리더보드, 재현 방법
-3. [results/README.md](results/README.md): 결과 폴더 지도와 파일 이름 규칙
-4. [results/design_notes.md](results/design_notes.md): 학습 로그에서만 얻은 검증 분석 (수렴, 초반 격차, 클래스 교차 패턴)
+## Repository Layout
 
-## 폴더 구성
-
-| 경로 | 내용 |
+| Path | Description |
 |---|---|
 | `docs/` | 실험 설계와 가설 검증 |
 | `results/` | 사이클별 결과 표와 그림 (`00_overview` ~ `06_final_model`) |
@@ -39,8 +38,6 @@ RGB 단독 대비 IR 기여는 B0(384×512)에서 val +3.95, 최종 설정(B2, 4
 | `notebooks/` | Colab 실행 노트북 |
 
 ---
-
-아래는 교수 제공 과제 안내문이다.
 
 # 트랙 A: FMB 악천후 RGB–열화상(IR) 융합 세그멘테이션
 
@@ -76,7 +73,7 @@ RGB 단독 대비 IR 기여는 B0(384×512)에서 val +3.95, 최종 설정(B2, 4
 - 상위 제출 팀은 코드·학습 로그·설정 파일(`runs/<이름>/args.json`, `log.jsonl`)을 제출하며, 교수가 재실행해 점수를 검증합니다. 재현되지 않으면 점수를 인정하지 않습니다.
 - 보고서에는 RGB 단독 대비 IR의 기여를 ablation 표로 제시합니다.
 
-## 개선 아이디어 (자유롭게 조합)
+## 개선 아이디어
 1. 옵티마이저와 LR 스케줄 (`train.py`)
 2. 증강 (`fusion_seg/data.py`): 색 지터는 RGB에만, IR은 별도 정규화
 3. 손실 함수: 클래스 가중 CE, OHEM, Dice
