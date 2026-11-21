@@ -49,7 +49,7 @@
 | 02_fusion | `classiou_concat_vs_adaptive.csv`, `curve_concat_vs_adaptive.png`, `run_gap_concat_res_vs_concat.csv`, `curve_gap_concat_res_vs_concat.png`, `run_gap_adaptive_vs_concat.csv`, `curve_gap_adaptive_vs_concat.png` |
 | 03_capacity | `classiou_b0_vs_b2.csv`, `classiou_384_vs_480.csv`, `run_gap_b2_sum_480_vs_b2_sum.csv`, `curve_gap_b2_sum_480_vs_b2_sum.png` |
 | 04_ir_contribution | `classiou_rgb_vs_sum.csv`, `classiou_dark_rgb_vs_sum.csv`, `miou_brightness_rgb_vs_sum.csv`, `classiou_ir_gain_brightness.png`, `qualitative_dark_rgb_vs_sum.png`, `run_gap_b2_sum_480_vs_b2_rgb_480.csv`, `curve_gap_b2_sum_480_vs_b2_rgb_480.png` |
-| 05_oversampling_final | (README만) |
+| 05_oversampling_final | `classiou_sum_vs_oversample.csv` |
 | 06_final_model | `confusion_final.png`, `confusion_final_top.csv`, `failure_final.csv`, `failure_final.png`, `miou_tta.csv` |
 
 ## 재생성

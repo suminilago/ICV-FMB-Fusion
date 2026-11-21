@@ -12,6 +12,8 @@
 | 9 | Sum (최종) | `fmb_b2_sum_480` | 51.55M | 30 | 73.65 | 66.13 |
 | 11 | Sum + Oversampling | `fmb_b2_sum_480_oversample10` | 51.55M | 30 | 74.46 | 65.64 |
 
+리더보드 제출 ID는 1062714다.
+
 ```bash
 python train_oversample.py --data_root data/FMB_prepared --fusion sum \
   --backbone nvidia/mit-b2 --height 480 --width 640 --epochs 30 --seed 0 \
@@ -32,16 +34,16 @@ val 상승 +0.81 중 Bicycle 한 클래스의 기여가 +1.14이고, 나머지 1
 
 | 클래스 | #9 | #11 | 차이 |
 |---|---:|---:|---:|
-| Bicycle | 46.60 | 62.59 | **+15.99** |
+| Bicycle | 46.60 | 62.59 | **+15.98** |
 | Sidewalk | 57.04 | 57.61 | +0.57 |
 | Bus | 73.72 | 74.25 | +0.53 |
 | Road | 90.29 | 90.70 | +0.40 |
 | Person | 67.16 | 66.58 | −0.58 |
 | Truck | 65.58 | 64.20 | −1.38 |
 | Motorcycle | 64.15 | 62.46 | −1.69 |
-| TrafficSign | 76.24 | 74.15 | −2.09 |
+| TrafficSign | 76.24 | 74.15 | −2.10 |
 
-Bicycle 외에 7개 클래스가 내렸고, 위 표에는 그중 4개만 실었다.
+Bicycle 외에 8개 클래스가 내렸고(Vegetation −0.01, Building −0.08처럼 0에 가까운 것 포함), 위 표에는 그중 4개만 실었다. 14개 클래스 전체는 [classiou_sum_vs_oversample.csv](classiou_sum_vs_oversample.csv)에 있다.
 
 ### 교차 확인
 
@@ -53,4 +55,6 @@ test −0.49는 0.5pp 이내라 단독으로는 순위를 말할 수 없고, 위
 
 ## 파일
 
-이 사이클의 표는 위 README에 있고 별도 CSV, 그림은 없다.
+| 파일 | 내용 |
+|---|---|
+| `classiou_sum_vs_oversample.csv` | #9(Sum)와 #11(Sum + Oversampling)의 클래스별 val IoU와 차이 |

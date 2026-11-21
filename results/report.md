@@ -73,9 +73,9 @@
 
 - B0 (#2 → #3): Bicycle IoU 0 → 43.40, 전체 65.48 → 67.97. val에서 Bicycle이 나오는 이미지는 2장뿐이다.
 - B2, 480×640 (#9 → #11): val +0.81 (73.65 → 74.46), test **−0.49** (66.13 → 65.64).
-  val 상승 +0.81 중 Bicycle 기여가 +1.14, 나머지 13개 클래스 합계가 −0.33이다. Bicycle은 +15.99이고 7개 클래스가 내렸다(TrafficSign −2.09, Motorcycle −1.69, Truck −1.38).
+  val 상승 +0.81 중 Bicycle 기여가 +1.14, 나머지 13개 클래스 합계가 −0.33이다. Bicycle은 +15.98이고 8개 클래스가 내렸다(TrafficSign −2.10, Motorcycle −1.69, Truck −1.38 등).
   Bicycle을 뺀 val 13개 클래스 mIoU는 75.73 → 75.37 (−0.36)로 test와 방향이 같다. val−test 격차는 7.52에서 8.82로 벌어졌다.
-- 파일: [01_baseline](01_baseline/README.md), [05_oversampling_final](05_oversampling_final/README.md)
+- 파일: [01_baseline](01_baseline/README.md), [05_oversampling_final](05_oversampling_final/README.md) ([classiou_sum_vs_oversample.csv](05_oversampling_final/classiou_sum_vs_oversample.csv))
 
 ### 3.5 실패 사례와 TTA (최종 모델)
 
@@ -90,7 +90,7 @@
 | 1061666 | B2 Sum 480×640 (#9, 최종) | 73.65 | **66.13** | 93.38 |
 | 1060429 | B2 Sum 384×512 (#8) | 72.74 | 63.90 | |
 | 1058499 | B0 Adaptive (#5) | 65.35 | 55.84 | 91.95 |
-| 미확정 | B2 Sum 480×640 + Oversampling (#11) | 74.46 | 65.64 | |
+| 1062714 | B2 Sum 480×640 + Oversampling (#11) | 74.46 | 65.64 | |
 
 #5, #8, #9는 `check_submission.py`로 점검했다(280장, 원본 크기, 클래스 0–13, 누락 0).
 모델과 설정은 val mIoU로만 골랐고 test 점수에 맞춘 조정은 없다. 제출 선택의 기준은 [설계 문서](../docs/experiment_design.md#리더보드-제출)에 있다.
