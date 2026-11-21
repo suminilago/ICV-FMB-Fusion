@@ -1,7 +1,6 @@
 # 결과 폴더 안내
 
-트랙 A(FMB, RGB + IR, 14 클래스)의 결과 표와 그림이다. 파일은 **그 실험의 폴더 안**에 표와 그림을 함께 둔다.
-한 실험의 근거가 두 폴더로 갈라지지 않도록 종류별(`tables/`, `figures/`)로 나누지 않았다.
+트랙 A(FMB, RGB + IR, 14 클래스)의 결과 표와 그림
 
 | 문서 | 내용 |
 |---|---|
@@ -9,10 +8,7 @@
 | [report.md](report.md) | 최종 보고서. 11개 실험 표, 주요 분석, 리더보드 제출, 재현 방법 |
 | [design_notes.md](design_notes.md) | 학습 로그에서만 얻은 검증 분석 |
 
-## 폴더 지도
-
-폴더 번호와 사이클 번호가 같다. `00`과 `06`은 사이클이 아니다.
-
+## 폴더 구조
 | 폴더 | 내용 | 설계 문서 |
 |---|---|---|
 | [00_overview](00_overview/README.md) | 전체 run 요약, 전체 학습 곡선 | |
@@ -25,8 +21,6 @@
 
 ## 파일 이름 규칙
 
-`<측정 대상>_<비교>` 형태다. 폴더가 실험을 가리키므로 백본, 해상도 같은 접미사는 뺐다.
-
 | 접두어 | 측정 대상 |
 |---|---|
 | `run_` | 실험 전체 메타 (설정, best, 수렴, epoch별 격차) |
@@ -37,8 +31,6 @@
 | `curve_` | 학습 곡선. `curve_gap_`은 epoch별 격차 패널이 붙은 것 |
 | `dist_` | 데이터 분포 |
 | `qualitative_` | 예측 결과 시각 비교 |
-
-`run_gap_<a>_vs_<b>.csv`와 `curve_gap_<a>_vs_<b>.png`의 격차는 (a − b)이고 이름은 run 폴더명에서 `fmb_`를 뺀 것이다.
 
 ## 파일 색인
 
@@ -53,8 +45,6 @@
 | 06_final_model | `confusion_final.png`, `confusion_final_top.csv`, `failure_final.csv`, `failure_final.png`, `miou_tta.csv` |
 
 ## 재생성
-
-학습 로그(`runs/*/log.jsonl`, `args.json`)만으로 만들 수 있는 표와 그림은 스크립트가 다시 만든다. 데이터, 체크포인트, GPU가 필요 없다.
 
 ```bash
 pip install matplotlib
