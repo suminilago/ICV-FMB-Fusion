@@ -1,0 +1,8 @@
+run,best_epoch,logged_epochs,best_is_last,val_ep10,val_ep20,val_last,gain_ep20_to_last
+fmb_adaptive,29,30,False,59.27,63.22,65.3,2.08
+fmb_b2_rgb_480,30,30,True,63.98,67.33,70.99,3.66
+fmb_b2_sum,29,30,False,65.72,68.51,72.38,3.87
+fmb_b2_sum_480,30,30,True,66.39,70.69,73.65,2.95
+fmb_concat,28,30,False,54.53,60.24,62.33,2.09
+fmb_concat_res,27,30,False,57.68,63.65,64.89,1.24
+fmb_early,30,30,True,56.75,59.9,62.19,2.29

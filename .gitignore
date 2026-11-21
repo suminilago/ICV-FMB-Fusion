@@ -221,7 +221,12 @@ __marimo__/
 
 # FMB project local artifacts
 /data/
-/runs/
+# 체크포인트(*.pth)는 아래 *.pth 규칙으로 계속 무시하고, args.json / log.jsonl 만 추적한다
+/runs/*
+!/runs/*/
+/runs/*/*
+!/runs/*/args.json
+!/runs/*/log.jsonl
 /submissions/
 *.pth
 *.pt
